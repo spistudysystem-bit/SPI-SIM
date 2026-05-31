@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+               data.uid == request.auth.uid &&
+               data.email is string &&
+               data.email.size() <= 256;
+      }
+
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && 
+                      isValidUser(request.resource.data) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'displayName', 'photoURL', 'lastActive', 'completedLectures',
+                        'syllabusStatus', 'voucherCode', 'voucherTier', 'joinedBetaAt',
+                        'textbookProgress', 'gamification', 'createdAt'
+                      ]);
+
+      match /chats/{chatId} {
+        function isValidChat(data) {
+          return data.keys().hasAll(['userId', 'question', 'answer', 'timestamp']) &&
+                 data.userId == request.auth.uid &&
+                 data.question is string && data.question.size() <= 5000 &&
+                 data.answer is string && data.answer.size() <= 10000 &&
+                 data.timestamp == request.time;
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidChat(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /profiles/{profileId} {
+        function isValidProfile(data) {
+          return data.keys().hasAll(['id', 'name', 'track', 'level']) &&
+                 data.id == profileId &&
+                 data.name is string && data.name.size() <= 128 &&
+                 data.track is string && data.track.size() <= 128 &&
+                 data.level is string && data.level.size() <= 128;
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidProfile(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /scans/{scanId} {
+        function isValidScan(data) {
+          return data.keys().hasAll(['id', 'profileId', 'caseId', 'site', 'psv', 'edv']) &&
+                 data.id == scanId &&
+                 data.profileId is string &&
+                 data.caseId is string && data.caseId.size() <= 128 &&
+                 data.site is string && data.site.size() <= 128 &&
+                 data.psv is number &&
+                 data.edv is number;
+        }
+
+        allow list, get: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidScan(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /mediaCache/{cacheId} {
+      function isValidMedia(data) {
+        return data.keys().hasAll(['key', 'base64Data', 'createdAt']) &&
+               data.key is string && data.key.size() <= 256 &&
+               data.base64Data is string && data.base64Data.size() <= 1048576 &&
+               data.createdAt == request.time;
+      }
+      allow get: if isSignedIn();
+      allow create: if isSignedIn() && isValidMedia(request.resource.data);
+    }
+    
+    // Testing path
+    match /test/connection {
+      allow get: if true;
+    }
+  }
+}

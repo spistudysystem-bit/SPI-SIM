@@ -1,0 +1,8 @@
+{
+  "name": "Remix: SonicBuild: Ultrasound Physics Academy",
+  "description": "Comprehensive interactive simulator for Ultrasound Physics (SPI) study. Covers transducers, array systems, pulsed wave parameters, artifacts, hemodynamics, and instrumentation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

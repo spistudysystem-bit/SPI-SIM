@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", serif;
+
+  --color-bg: #0c0d10;
+  --color-card: #16181d;
+  --color-border: #2d3139;
+  --color-primary: #00d1ff;
+  --color-accent: #ffb800;
+  --color-text: #e0e0e0;
+  --color-text-dim: #8e9299;
+  
+  /* Component Layers */
+  --color-backing-layer: #34373e;
+  --color-crystal-layer: #ffd700;
+  --color-match-layer: #40e0d0;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    @apply font-sans antialiased;
+  }
+}
+
+.serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+/* Technical HUD Elements */
+.hud-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.hud-dots {
+  background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(45, 49, 57, 0.5);
+  border-radius: 10px;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+@keyframes scanning {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.animate-scanning {
+  animation: scanning 4s linear infinite;
+}
+
+@media (max-width: 1279px) {
+  /* On mobile, let the module components expand naturally based on their content */
+  main > div[class*="flex-1"] {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: min-content !important;
+    overflow-y: visible !important;
+  }
+  
+  /* Ensure inner left/right panes don't squash */
+  main > div[class*="flex-1"] > div {
+    flex-shrink: 0 !important;
+    min-height: min-content !important;
+    overflow-y: visible !important;
+  }
+}

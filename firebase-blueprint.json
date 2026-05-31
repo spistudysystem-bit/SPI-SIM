@@ -1,0 +1,107 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile and academic progress",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "completedLectures": { "type": "array" },
+        "syllabusStatus": { "type": "object" },
+        "voucherCode": { "type": "string" },
+        "voucherTier": { "type": "string" },
+        "joinedBetaAt": { "type": "string", "format": "date-time" },
+        "textbookProgress": { "type": "object" },
+        "gamification": { "type": "object" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Profile": {
+      "title": "Sub Profile",
+      "description": "Custom clinical sonographer or student profile for multi-operator environments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "track": { "type": "string" },
+        "level": { "type": "string" },
+        "voice": { "type": "string" },
+        "studyGoalMinutes": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "streak": { "type": "integer" },
+        "completedLecturesCount": { "type": "integer" },
+        "simSecondsElapsed": { "type": "integer" }
+      },
+      "required": ["id", "name", "track", "level"]
+    },
+    "ScanLog": {
+      "title": "Clinical Scan Log",
+      "description": "Workbook logs recording simulated ultrasound cases and hemodynamics calculations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "profileId": { "type": "string" },
+        "caseId": { "type": "string" },
+        "site": { "type": "string" },
+        "psv": { "type": "number" },
+        "edv": { "type": "number" },
+        "ri": { "type": "number" },
+        "findings": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "profileId", "caseId", "site", "psv", "edv"]
+    },
+    "Chat": {
+      "title": "Chat Message",
+      "description": "Stores interactions with the KB AI",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "topic": { "type": "string" }
+      },
+      "required": ["userId", "question", "answer", "timestamp"]
+    },
+    "MediaCache": {
+      "title": "Media Cache",
+      "description": "Caches generated audio as base64 to save API costs",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "description": "Unique identifier for the content (e.g. lectureId + index)" },
+        "base64Data": { "type": "string", "description": "Audio data in base64 format" },
+        "contentType": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["key", "base64Data", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents"
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Chat history for a specific user"
+    },
+    "/users/{userId}/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Custom operator sub-profiles"
+    },
+    "/users/{userId}/scans/{scanId}": {
+      "schema": "ScanLog",
+      "description": "Ultrasound scans journal entries"
+    },
+    "/mediaCache/{cacheId}": {
+      "schema": "MediaCache",
+      "description": "Global cache for generated media"
+    }
+  }
+}
