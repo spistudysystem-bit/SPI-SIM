@@ -21,7 +21,14 @@ import {
   ShieldAlert,
   Save,
   Layers,
-  Heart
+  Heart,
+  Star,
+  Flame,
+  Coins,
+  Crown,
+  Lock,
+  Zap,
+  Atom
 } from 'lucide-react';
 import { 
   RadarChart, 
@@ -39,6 +46,7 @@ import {
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import undercoverUuuBadge from '../../assets/images/undercover_uuu_badge_upgraded_1781319628636.jpg';
 import { 
   collection, 
   doc, 
@@ -52,16 +60,45 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 
-interface OperatorProfile {
+export interface OperatorProfile {
   id: string;
   name: string;
   track: string;
   level: string;
-  voice: 'standard' | 'bourdain' | 'sedaris';
+  voice: 'standard' | 'bourdain' | 'sedaris' | 'british';
   studyGoalMinutes: number;
   streak: number;
   completedLecturesCount: number;
   simSecondsElapsed: number;
+  // Dynamic gamification elements
+  avatarId?: string;
+  avatarColor?: string;
+  tagline?: string;
+  xp?: number;
+  coins?: number;
+  equippedPowerup?: string;
+  teamId?: string;
+  difficultyMode?: 'low' | 'medium' | 'high';
+  completedDailyQuests?: string[];
+  unlockedBadges?: string[];
+}
+
+// Safely backfills existing operator records with custom gamified attributes
+export function sanitizeProfile(p: any): OperatorProfile {
+  return {
+    ...p,
+    xp: p.xp !== undefined ? p.xp : 120,
+    coins: p.coins !== undefined ? p.coins : 50,
+    streak: p.streak !== undefined ? p.streak : 1,
+    avatarId: p.avatarId || 'user',
+    avatarColor: p.avatarColor || '#00d1ff',
+    tagline: p.tagline || 'Acoustic pioneer of ultrasound physics.',
+    equippedPowerup: p.equippedPowerup || '',
+    teamId: p.teamId || 'vascular-vikings',
+    difficultyMode: p.difficultyMode || 'medium',
+    completedDailyQuests: p.completedDailyQuests || [],
+    unlockedBadges: p.unlockedBadges || ['acoustic-apprentice']
+  };
 }
 
 interface ScanLog {
@@ -80,6 +117,50 @@ interface ProfileModuleProps {
   setViewMode: (mode: any) => void;
   dopplerAngle?: number;
   bloodVelocity?: number;
+}
+
+// Unique identifiers for abstract sonography user icons
+export const AVATARS_LIST = [
+  { id: 'user', label: 'Clinician User' },
+  { id: 'wave', label: 'Doppler Wave' },
+  { id: 'zap', label: 'Acoustic Pulse' },
+  { id: 'heart', label: 'Standard Echocardiograph' },
+  { id: 'shield', label: 'Safety Index ALARA' },
+  { id: 'layers', label: 'Synthetic Crystal' },
+  { id: 'crown', label: 'Registry Master' },
+  { id: 'star', label: 'Cosmic Resonance' }
+];
+
+// Rich wave colors representing modern imaging spectrums
+export const AVATAR_COLORS = [
+  { color: '#00d1ff', name: 'Cyber Neon Cyan' },
+  { color: '#10b981', name: 'Aurora Green' },
+  { color: '#fbbf24', name: 'Solar Apex Gold' },
+  { color: '#e11d48', name: 'Velocity Crimson' },
+  { color: '#8b5cf6', name: 'Interstellar Purple' },
+  { color: '#ff7849', name: 'Cosmic Orange' }
+];
+
+// Dynamic Lucide selection mapper
+export function renderAvatarIcon(avatarId: string, size: number = 16) {
+  switch (avatarId) {
+    case 'wave':
+      return <Activity size={size} />;
+    case 'zap':
+      return <Zap size={size} className="fill-current/10" />;
+    case 'heart':
+      return <Heart size={size} className="fill-current/10" />;
+    case 'shield':
+      return <ShieldAlert size={size} className="fill-current/10" />;
+    case 'layers':
+      return <Layers size={size} />;
+    case 'crown':
+      return <Crown size={size} className="fill-current/10" />;
+    case 'star':
+      return <Star size={size} className="fill-current/10" />;
+    default:
+      return <User size={size} />;
+  }
 }
 
 // Pre-defined scanning presets for quick logging
@@ -111,6 +192,16 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
   const [scanLogs, setScanLogs] = useState<ScanLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
+  // Toast Notification States
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'info' | 'warning'>('success');
+
+  const showToast = (msg: string, type: 'success' | 'info' | 'warning' = 'success') => {
+    setToastMessage(msg);
+    setToastType(type);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Quiz progress and performance states
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [showDemoBenchmarks, setShowDemoBenchmarks] = useState<boolean>(true);
@@ -119,7 +210,7 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
   const [formName, setFormName] = useState('');
   const [formTrack, setFormTrack] = useState('Vascular & Doppler');
   const [formLevel, setFormLevel] = useState('Beginner Student');
-  const [formVoice, setFormVoice] = useState<'standard' | 'bourdain' | 'sedaris'>('standard');
+  const [formVoice, setFormVoice] = useState<'standard' | 'bourdain' | 'sedaris' | 'british'>('standard');
   const [formGoal, setFormGoal] = useState('60');
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -179,12 +270,12 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
       unsubscribeProfiles = onSnapshot(profilesRef, (snapshot) => {
         const loadedProfiles: OperatorProfile[] = [];
         snapshot.forEach((doc) => {
-          loadedProfiles.push({ id: doc.id, ...doc.data() } as OperatorProfile);
+          loadedProfiles.push(sanitizeProfile({ id: doc.id, ...doc.data() }));
         });
 
         if (loadedProfiles.length === 0) {
           // Initialize with a default profile if none exists
-          const defaultProf: OperatorProfile = {
+          const defaultProf = sanitizeProfile({
             id: 'primary-operator',
             name: user.displayName || 'Authorized Clinician',
             track: 'Echo & General Physics',
@@ -193,8 +284,13 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
             studyGoalMinutes: 60,
             streak: 3,
             completedLecturesCount: 4,
-            simSecondsElapsed: 1200
-          };
+            simSecondsElapsed: 1200,
+            avatarId: 'crown',
+            avatarColor: '#fbbf24',
+            tagline: 'Lead Clinical Registrar / Physics Guide',
+            xp: 320,
+            coins: 120
+          });
           setDoc(doc(db, 'users', user.uid, 'profiles', 'primary-operator'), defaultProf);
           loadedProfiles.push(defaultProf);
         }
@@ -234,7 +330,15 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
           studyGoalMinutes: 45,
           streak: 1,
           completedLecturesCount: 1,
-          simSecondsElapsed: 340
+          simSecondsElapsed: 340,
+          avatarId: 'user',
+          avatarColor: '#00d1ff',
+          tagline: 'Velocity is vector, Doppler is king.',
+          xp: 220,
+          coins: 75,
+          equippedPowerup: '',
+          teamId: 'vascular-vikings',
+          completedDailyQuests: []
         },
         {
           id: 'guest-physician',
@@ -245,16 +349,29 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
           studyGoalMinutes: 120,
           streak: 5,
           completedLecturesCount: 8,
-          simSecondsElapsed: 4200
+          simSecondsElapsed: 4200,
+          avatarId: 'crown',
+          avatarColor: '#8b5cf6',
+          tagline: 'Echocardiography Master. ALARA safety advocate.',
+          xp: 1450,
+          coins: 480,
+          equippedPowerup: 'double_xp',
+          teamId: 'cardiac-knights',
+          completedDailyQuests: []
         }
       ];
 
       const localProfilesStr = localStorage.getItem('guest_operator_profiles');
       if (localProfilesStr) {
-        setProfiles(JSON.parse(localProfilesStr));
+        try {
+          const parsed = JSON.parse(localProfilesStr);
+          setProfiles(parsed.map((p: any) => sanitizeProfile(p)));
+        } catch {
+          setProfiles(defaultProfiles.map(p => sanitizeProfile(p)));
+        }
       } else {
-        localStorage.setItem('guest_operator_profiles', JSON.stringify(defaultProfiles));
-        setProfiles(defaultProfiles);
+        localStorage.setItem('guest_operator_profiles', JSON.stringify(defaultProfiles.map(p => sanitizeProfile(p))));
+        setProfiles(defaultProfiles.map(p => sanitizeProfile(p)));
       }
 
       const savedActive = localStorage.getItem('active_profile_guest') || 'guest-student';
@@ -313,17 +430,26 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
   };
 
   // Get active profile properties safely
-  const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || {
-    id: 'default-operator',
-    name: 'Clinical Guest',
-    track: 'Vascular & Doppler',
-    level: 'Beginner Student',
-    voice: 'standard',
-    studyGoalMinutes: 60,
-    streak: 1,
-    completedLecturesCount: 2,
-    simSecondsElapsed: 450
-  };
+  const activeProfile = sanitizeProfile(
+    profiles.find(p => p.id === activeProfileId) || profiles[0] || {
+      id: 'default-operator',
+      name: 'Clinical Guest',
+      track: 'Vascular & Doppler',
+      level: 'Beginner Student',
+      voice: 'standard',
+      studyGoalMinutes: 60,
+      streak: 1,
+      completedLecturesCount: 2,
+      simSecondsElapsed: 450
+    }
+  );
+
+  // Automatically sync active profile voice to localStorage narrator key for useNarrator hook
+  useEffect(() => {
+    if (activeProfile && activeProfile.voice) {
+      localStorage.setItem('spi_narrator_voice_profile', activeProfile.voice);
+    }
+  }, [activeProfile?.id, activeProfile?.voice]);
 
   // Form submit to create a new operator profile
   const handleAddProfile = async (e: React.FormEvent) => {
@@ -331,23 +457,31 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
     if (!formName.trim()) return;
 
     const newId = `profile_${Date.now()}`;
-    const newProfile: OperatorProfile = {
+    const newProfile = sanitizeProfile({
       id: newId,
       name: formName,
       track: formTrack,
       level: formLevel,
       voice: formVoice,
       studyGoalMinutes: parseInt(formGoal) || 60,
-      streak: 0,
+      streak: 1,
       completedLecturesCount: 0,
-      simSecondsElapsed: 0
-    };
+      simSecondsElapsed: 0,
+      avatarId: 'user',
+      avatarColor: '#00d1ff',
+      tagline: 'Ultrasonic resonance engineer.',
+      xp: 120,
+      coins: 50,
+      equippedPowerup: '',
+      teamId: 'vascular-vikings'
+    });
 
     if (user) {
       // Sync with cloud db
       const path = `users/${user.uid}/profiles/${newId}`;
       try {
         await setDoc(doc(db, 'users', user.uid, 'profiles', newId), newProfile);
+        showToast("👤 New sonographer ID registered on Cloud Database!");
       } catch (err) {
         console.error('Error inserting operator profile', err);
         handleFirestoreError(err, OperationType.CREATE, path);
@@ -357,11 +491,39 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
       const updated = [...profiles, newProfile];
       setProfiles(updated);
       localStorage.setItem('guest_operator_profiles', JSON.stringify(updated));
+      showToast("👤 New sonographer ID created locally!");
     }
 
     setActiveProfileId(newId);
     setFormName('');
     setShowAddModal(false);
+  };
+
+  // Update profile attributes inline (e.g. customized avatar, tagline, team)
+  const handleUpdatePersona = async (updates: Partial<OperatorProfile>) => {
+    const updatedProfiles = profiles.map(p => {
+      if (p.id === activeProfileId) {
+        return { ...p, ...updates };
+      }
+      return p;
+    });
+    setProfiles(updatedProfiles);
+
+    if (user) {
+      try {
+        const docRef = doc(db, 'users', user.uid, 'profiles', activeProfileId);
+        await setDoc(docRef, updates, { merge: true });
+        showToast("🎨 Sonic Persona updated. Changes synchronized to cloud!", "success");
+      } catch (err) {
+        console.error("Cloud persona update error:", err);
+        showToast("⚠️ Could not sync persona online.", "warning");
+      }
+    } else {
+      localStorage.setItem('guest_operator_profiles', JSON.stringify(updatedProfiles));
+      // Dispatch storage event to notify other modules
+      window.dispatchEvent(new Event('storage'));
+      showToast("🎨 Persona style saved locally!", "success");
+    }
   };
 
   // Delete profile option
@@ -687,6 +849,15 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
   const isAngleCorrectMaster = dopplerAngle <= 60 && dopplerAngle >= 45;
   const loggedTurbulentCases = activeProfileScans.some(s => s.psv > 200 || s.findings.toLowerCase().includes('stenosis') || s.findings.toLowerCase().includes('critical'));
   const holdsALARAHonor = activeProfile.simSecondsElapsed > 600;
+  const isCovertOperative = activeProfile.teamId === 'undercover-uuu';
+  const unlockedBadgesCount = Math.max(1, 
+    (isAngleCorrectMaster ? 1 : 0) + 
+    (totalCompletedScans > 0 ? 1 : 0) + 
+    (loggedTurbulentCases ? 1 : 0) + 
+    (holdsALARAHonor ? 1 : 0) + 
+    (activeProfile.completedLecturesCount > 0 ? 1 : 0) +
+    (isCovertOperative ? 1 : 0)
+  );
 
   return (
     <motion.div 
@@ -715,6 +886,7 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
+            id="tour-add-operator"
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#00d1ff]/10 hover:bg-[#00d1ff] text-[#00d1ff] hover:text-black border border-[#00d1ff]/30 transition-all text-xs sm:text-sm font-mono font-bold uppercase tracking-widest cursor-pointer"
           >
@@ -759,15 +931,17 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
                          >
                             <div className="flex items-start gap-3">
                                <div className={`p-2 rounded-lg ${isActive ? 'bg-[#00d1ff]/20 text-[#00d1ff]' : 'bg-[#1a1c22] text-[#8e9299] group-hover:text-white'}`}>
-                                  <User size={16} />
+                                  {renderAvatarIcon(prof.avatarId || 'user', 14)}
                                </div>
                                <div>
                                   <div className="text-xs uppercase font-mono font-bold tracking-wider leading-none flex items-center gap-1.5">
                                      {prof.name}
                                      {isActive && <div className="w-1.5 h-1.5 rounded-full bg-[#00d1ff]" />}
                                   </div>
-                                  <div className="text-[9px] text-[#8e9299] font-sans mt-1">
-                                     {prof.level} • {prof.track}
+                                  <div className="text-[9px] text-[#8e9299] font-sans mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                                     <span>Lvl {Math.floor((prof.xp || 120) / 100)} •</span>
+                                     <span>{prof.teamId === 'cardiac-knights' ? 'Knight' : prof.teamId === 'physics-phantoms' ? 'Phantom' : prof.teamId === 'safety-guardians' ? 'Guardian' : 'Viking'} •</span>
+                                     <span>{prof.track.split(' ')[0]}</span>
                                   </div>
                                </div>
                             </div>
@@ -787,13 +961,41 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
 
                             {/* Background slide line indicator */}
                             {isActive && (
-                               <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00d1ff]" />
+                               <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: prof.avatarColor || '#00d1ff' }} />
                             )}
                          </div>
                       );
                    })}
                 </div>
              )}
+          </div>
+
+          {/* Premium Early Access Lifetimer Trigger Link */}
+          <div className="relative overflow-hidden rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-600/5 to-transparent p-5 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+             <div className="absolute top-0 right-0 w-24 h-24 -mr-6 -mt-6 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full blur-2xl" />
+             <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={14} className="text-amber-400 animate-pulse" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-amber-400">EARLY ACCESS PROMO</span>
+             </div>
+             <h3 className="text-sm font-black text-white tracking-wide leading-snug">
+                Lifetime Membership Access
+             </h3>
+             <p className="text-[#8e9299] text-[11px] leading-relaxed mt-1">
+                Unlock full unlimited credentials, premium SPI mock exams, AI board assistants, and future features forever with a single payment.
+             </p>
+             <div className="mt-4 flex items-baseline gap-2">
+                <span className="text-xl font-black text-amber-300 tracking-tight">$350</span>
+                <span className="text-xs text-[#8e9299] line-through font-mono">$1,200</span>
+                <span className="text-[10px] text-emerald-400 font-mono font-bold uppercase ml-auto bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded">SAVE 70% // ONCE</span>
+             </div>
+             <a 
+                href="https://buy.stripe.com/00w6oGanpcH8boq5tRafS0e"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 block w-full py-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black rounded-lg text-center text-xs font-mono font-black uppercase tracking-wider transition-all shadow-[0_4px_12px_rgba(245,158,11,0.25)] cursor-pointer select-none"
+             >
+                Secure Lifetime Access
+             </a>
           </div>
 
           {/* Weekly Goals Summary */}
@@ -841,12 +1043,365 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
                       <div className="text-[8px] text-[#8e9299] uppercase">Audio Narrator</div>
                       <div className="text-[11px] font-bold text-emerald-400 uppercase mt-1.5 flex items-center gap-1.5">
                          <Volume2 size={12} />
-                         {activeProfile.voice === 'bourdain' ? 'Bourdain' : activeProfile.voice === 'sedaris' ? 'Sedaris' : 'Clinical'}
+                         {activeProfile.voice === 'bourdain' ? 'Bourdain' : activeProfile.voice === 'sedaris' ? 'Sedaris (UK F)' : activeProfile.voice === 'british' ? 'British Tutor' : 'Clinical (US)'}
                       </div>
                    </div>
                 </div>
              </div>
           </div>
+
+         {/* Clinician Persona & Live Avatar Customizer Studio */}
+         <div className="border border-white/5 bg-[#16181d]/60 rounded-xl p-5 flex flex-col gap-4 font-sans text-white">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+               <h2 className="text-[10px] font-mono uppercase tracking-widest text-white/70 flex items-center gap-1.5 font-bold">
+                  <Sparkles size={11} className="text-[#00d1ff] animate-pulse" />
+                  Identity Studio
+               </h2>
+               <span className="text-[8px] font-mono text-[#00d1ff]/85 uppercase bg-[#00d1ff]/10 border border-[#00d1ff]/20 px-2 py-0.5 rounded-full">Level {Math.floor((activeProfile.xp || 120) / 100)}</span>
+            </div>
+
+            {/* Large Dynamic Live Avatar Preview block */}
+            <div className="bg-[#0a0b0d] p-4 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group select-none">
+               {/* Background Gradient Orbs */}
+               <div 
+                 className="absolute inset-0 opacity-10 filter blur-xl group-hover:opacity-20 transition-opacity duration-500 pointer-events-none"
+                 style={{
+                   background: `radial-gradient(circle, ${activeProfile.avatarColor || '#00d1ff'} 0%, transparent 70%)`
+                 }}
+               />
+               
+               {/* Icon Frame */}
+               <div 
+                 className="p-5 rounded-2xl mb-3 shrink-0 relative z-10 transition-transform duration-500 group-hover:scale-110 cursor-pointer"
+                 style={{
+                   background: `${activeProfile.avatarColor || '#00d1ff'}15`,
+                   color: activeProfile.avatarColor || '#00d1ff',
+                   border: `2px solid ${activeProfile.avatarColor || '#00d1ff'}30`,
+                   boxShadow: `0 0 15px ${activeProfile.avatarColor || '#00d1ff'}10`
+                 }}
+                 onClick={() => {
+                   // Hidden Easter Egg: Click 5 times to trigger secret reward
+                   const counts = (window as any)._eggCount || 0;
+                   const newCount = counts + 1;
+                   (window as any)._eggCount = newCount;
+                   if (newCount === 5) {
+                     const earnsEasterEgg = !activeProfile.unlockedBadges?.includes('easter-egg');
+                     if (earnsEasterEgg) {
+                       const updatedBadges = [...(activeProfile.unlockedBadges || []), 'easter-egg'];
+                       handleUpdatePersona({
+                         unlockedBadges: updatedBadges,
+                         xp: (activeProfile.xp || 120) + 50,
+                         coins: (activeProfile.coins || 50) + 30
+                       });
+                       showToast("🎉 Secret Acoustic Resonance Found! +50 XP, +30 Coins and 'Easter Egg Hunter' badge awarded!", "success");
+                     } else {
+                       showToast("🌸 Quiet frequencies of the crystal lattice resonate smoothly.", "info");
+                     }
+                   } else if (newCount < 5) {
+                     showToast(`🔮 Calibrating crystal frequency... Tap ${5 - newCount} more times!`, "info");
+                   }
+                 }}
+               >
+                  {renderAvatarIcon(activeProfile.avatarId || 'user', 32)}
+               </div>
+
+               <div className="text-sm font-bold text-white font-serif italic relative z-10">{activeProfile.name}</div>
+               <p className="text-[10px] text-[#8e9299] italic mt-1 px-4 relative z-10 font-mono leading-none">
+                  "{activeProfile.tagline || 'Acoustic pioneer of ultrasound.'}"
+               </p>
+
+               {/* Experience and Level Progress Sub-stat */}
+               <div className="w-full mt-4 pt-3.5 border-t border-white/5 flex flex-col gap-1.5 relative z-10 leading-none">
+                  <div className="flex justify-between items-center text-[9px] font-mono leading-none">
+                     <span className="text-[#8e9299] uppercase">XP Progress</span>
+                     <span className="text-white font-bold">{(activeProfile.xp || 120) % 100} / 100 XP</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full rounded-full transition-all duration-700 font-mono"
+                       style={{
+                         width: `${((activeProfile.xp || 120) % 100)}%`,
+                         backgroundColor: activeProfile.avatarColor || '#00d1ff'
+                       }}
+                     />
+                  </div>
+                  <div className="flex justify-between items-center text-[8.5px] font-mono mt-1.5 text-[#8e9299] leading-none">
+                     <span>Total XP: {activeProfile.xp || 120}</span>
+                     <span className="text-[#ffd700] flex items-center gap-0.5 font-bold"><Coins size={9} /> {activeProfile.coins || 50} Acoustic Coins</span>
+                  </div>
+               </div>
+            </div>
+
+            {/* Customizer Toggles */}
+            <div className="flex flex-col gap-3 font-sans">
+               {/* 1. Choose Avatar Symbol */}
+               <div className="flex flex-col gap-1">
+                  <label className="text-[8px] font-bold text-[#8e9299] uppercase tracking-wider font-mono">Select Probe Symbol</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                     {AVATARS_LIST.map(av => (
+                        <button
+                          key={av.id}
+                          type="button"
+                          onClick={() => handleUpdatePersona({ avatarId: av.id })}
+                          className={`p-1.5 border rounded-lg flex items-center justify-center transition-all cursor-pointer ${activeProfile.avatarId === av.id ? 'bg-white/5 border-white/40 text-white' : 'bg-transparent border-white/5 text-white/45 hover:text-white hover:bg-white/5'}`}
+                          title={av.label}
+                        >
+                           {renderAvatarIcon(av.id, 13)}
+                        </button>
+                     ))}
+                  </div>
+               </div>
+
+               {/* 2. Color Palette Selector */}
+               <div className="flex flex-col gap-1">
+                  <label className="text-[8px] font-bold text-[#8e9299] uppercase tracking-wider font-mono">Adjust Wave Theme</label>
+                  <div className="flex items-center gap-2">
+                     {AVATAR_COLORS.map(c => (
+                        <button
+                          key={c.color}
+                          type="button"
+                          onClick={() => handleUpdatePersona({ avatarColor: c.color })}
+                          className="w-5 h-5 rounded-full border border-white/10 flex items-center justify-center transition-transform hover:scale-110 shrink-0 relative cursor-pointer"
+                          style={{ backgroundColor: c.color }}
+                          title={c.name}
+                        >
+                           {activeProfile.avatarColor === c.color && (
+                              <div className="w-1.5 h-1.5 rounded-full bg-black/80" />
+                           )}
+                        </button>
+                     ))}
+                  </div>
+               </div>
+
+               {/* 3. Competitive Team Guild */}
+               <div className="flex flex-col gap-1">
+                  <label className="text-[8px] font-bold text-[#8e9299] uppercase tracking-wider font-mono">Join Class Cohort</label>
+                  <select
+                    value={activeProfile.teamId || 'vascular-vikings'}
+                    onChange={(e) => {
+                       const chosenTeam = e.target.value;
+                       handleUpdatePersona({ teamId: chosenTeam });
+                       if (chosenTeam === 'undercover-uuu') {
+                         showToast("🕶️ WELCOME TO THE ULTRASOUND UNDERGROUND (U.U.)! Clandestine registry clearance protocols authorized.", "success");
+                       }
+                     }}
+                    className="bg-[#0a0b0d] border border-white/10 rounded-lg p-2 text-[10px] font-mono text-white focus:outline-none focus:border-[#00d1ff] cursor-pointer"
+                  >
+                     <option value="vascular-vikings">Vascular Vikings 🛡️ (Stenosis Scanners)</option>
+                     <option value="cardiac-knights">Cardiac Knights ❤️ (Echocardiography Guild)</option>
+                     <option value="physics-phantoms">Physics Phantoms 🌀 (Wave Alchemists)</option>
+                     <option value="safety-guardians">ALARA Guardians 🔰 (Safety Index Masters)</option>
+                      <option value="undercover-uuu">Ultrasound Underground 🕶️ (Spec-Ops Registry Solvers)</option>
+                  </select>
+               </div>
+
+               {/* 4. Edit Tagline Inline */}
+               <div className="flex flex-col gap-1">
+                  <label className="text-[8px] font-bold text-[#8e9299] uppercase tracking-wider font-mono">Custom Tagline / Bio</label>
+                  <input 
+                    type="text"
+                    value={activeProfile.tagline || ''}
+                    onChange={(e) => handleUpdatePersona({ tagline: e.target.value })}
+                    maxLength={40}
+                    placeholder="e.g. Velocity is vector, Doppler is king."
+                    className="bg-[#0a0b0d] border border-white/10 focus:border-[#00d1ff] rounded-lg p-2 text-[10px] text-white focus:outline-none font-mono"
+                  />
+               </div>
+
+               {/* 5. Narrator Voice Accent */}
+               <div className="flex flex-col gap-1">
+                  <label className="text-[8px] font-bold text-[#8e9299] uppercase tracking-wider font-mono">Narrator Voice Accent</label>
+                  <select
+                    value={activeProfile.voice || 'standard'}
+                    onChange={(e) => {
+                      const voiceVal = e.target.value as any;
+                      handleUpdatePersona({ voice: voiceVal });
+                      localStorage.setItem('spi_narrator_voice_profile', voiceVal);
+                    }}
+                    className="bg-[#0a0b0d] border border-white/10 rounded-lg p-2 text-[10px] font-mono text-white focus:outline-none focus:border-[#00d1ff] cursor-pointer"
+                  >
+                     <option value="standard">Clinical Tutor (US Standard)</option>
+                     <option value="bourdain">Bourdain (American Warm)</option>
+                     <option value="sedaris">Sedaris Mode (UK Female Accent)</option>
+                     <option value="british">Standard British Accent (UK Professional Male)</option>
+                  </select>
+               </div>
+            </div>
+         </div>
+
+         {/* Card: Daily Quests & Team Cohort Goals */}
+         <div className="border border-white/5 bg-[#16181d]/60 rounded-xl p-5 flex flex-col gap-4 font-sans text-white">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+               <h2 className="text-[10px] font-mono uppercase tracking-widest text-[#8e9299] flex items-center gap-1.5 font-bold">
+                  <Flame size={12} className="text-orange-500 animate-pulse" />
+                  Daily Mini-Quests
+               </h2>
+               <span className="text-[8px] font-mono bg-orange-500/10 text-orange-400 font-bold px-1.5 py-0.5 rounded border border-orange-500/20">
+                  Resets Daily
+               </span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+               {/* Mini Quest 1 */}
+               <div className="flex items-start justify-between bg-[#0a0b0d] p-2.5 rounded-lg border border-white/5">
+                  <div className="flex gap-2">
+                     <input 
+                       type="checkbox" 
+                       checked={activeProfile.completedDailyQuests?.includes('daily-angle') || false}
+                       onChange={() => {
+                         const questList = activeProfile.completedDailyQuests || [];
+                         const isFinished = questList.includes('daily-angle');
+                         let updated = [...questList];
+                         let xpGain = 0;
+                         let coinGain = 0;
+                         
+                         if (!isFinished) {
+                           updated.push('daily-angle');
+                           xpGain = 30;
+                           coinGain = 15;
+                           showToast("💪 Mini-Quest: Carotid Precision matched! +30 XP, +15 Coins!", "success");
+                         } else {
+                           updated = updated.filter(q => q !== 'daily-angle');
+                           xpGain = -30;
+                           coinGain = -15;
+                         }
+                         handleUpdatePersona({
+                           completedDailyQuests: updated,
+                           xp: Math.max(0, (activeProfile.xp || 120) + xpGain),
+                           coins: Math.max(0, (activeProfile.coins || 50) + coinGain)
+                         });
+                       }}
+                       className="mt-0.5 rounded border-white/20 bg-black text-cyan-400 focus:ring-0 scale-95 cursor-pointer animate-none"
+                     />
+                     <div>
+                        <div className="text-[10px] font-bold text-white leading-none">The Golden Angle</div>
+                        <p className="text-[9px] text-[#8e9299] mt-0.5 font-mono">Achieve a perfect 60° Doppler alignment in Simulator.</p>
+                     </div>
+                  </div>
+                  <span className="text-[9px] font-mono text-[#ffd700]">+15 Coins</span>
+               </div>
+
+               {/* Mini Quest 2 */}
+               <div className="flex items-start justify-between bg-[#0a0b0d] p-2.5 rounded-lg border border-white/5">
+                  <div className="flex gap-2">
+                     <input 
+                       type="checkbox" 
+                       checked={activeProfile.completedDailyQuests?.includes('daily-scan') || false}
+                       onChange={() => {
+                         const questList = activeProfile.completedDailyQuests || [];
+                         const isFinished = questList.includes('daily-scan');
+                         let updated = [...questList];
+                         let xpGain = 0;
+                         let coinGain = 0;
+                         
+                         if (!isFinished) {
+                           updated.push('daily-scan');
+                           xpGain = 30;
+                           coinGain = 15;
+                           showToast("💪 Mini-Quest: Record Renal Flow verified! +30 XP, +15 Coins!", "success");
+                         } else {
+                           updated = updated.filter(q => q !== 'daily-scan');
+                           xpGain = -30;
+                           coinGain = -15;
+                         }
+                         handleUpdatePersona({
+                           completedDailyQuests: updated,
+                           xp: Math.max(0, (activeProfile.xp || 120) + xpGain),
+                           coins: Math.max(0, (activeProfile.coins || 50) + coinGain)
+                         });
+                       }}
+                       className="mt-0.5 rounded border-white/20 bg-black text-cyan-400 focus:ring-0 scale-95 cursor-pointer animate-none"
+                     />
+                     <div>
+                        <div className="text-[10px] font-bold text-white leading-none">Record Renal Flow</div>
+                        <p className="text-[9px] text-[#8e9299] mt-0.5 font-mono">Log low-impedance kidney flow logs.</p>
+                     </div>
+                  </div>
+                  <span className="text-[9px] font-mono text-[#ffd700]">+15 Coins</span>
+               </div>
+            </div>
+
+            {/* Collaborative Team Challenge Progress bar */}
+            <div className="border-t border-white/5 pt-3 mt-1 flex flex-col gap-2 relative z-10 leading-none">
+               <div className="flex justify-between items-center text-[9px] font-mono uppercase text-[#8e9299] font-bold">
+                  <span>Collaborative Milestones</span>
+                  <span className="text-[#00d1ff] font-sans">
+                     {activeProfile.teamId === 'vascular-vikings' ? '82%' : activeProfile.teamId === 'cardiac-knights' ? '65%' : activeProfile.teamId === 'physics-phantoms' ? '93%' : '52%'}
+                  </span>
+               </div>
+               <div className="bg-[#0a0b0d] p-3 rounded-xl border border-white/5 flex flex-col gap-1.5 text-xs">
+                  <div className="flex justify-between items-baseline font-mono text-[9px]">
+                     <span className="font-bold text-white">Stenosis Sweep Sync</span>
+                     <span className="text-[#8e9299]">4,120 / 5,000 runs</span>
+                  </div>
+                  <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                     <div 
+                       className="h-full bg-cyan-400 rounded-full"
+                       style={{
+                         width: activeProfile.teamId === 'physics-phantoms' ? '93%' : activeProfile.teamId === 'vascular-vikings' ? '82%' : activeProfile.teamId === 'cardiac-knights' ? '65%' : '52%',
+                         backgroundColor: activeProfile.avatarColor || '#00d1ff'
+                       }}
+                     />
+                  </div>
+                  <p className="text-[8px] leading-tight text-[#8e9299] italic mt-1 font-mono">
+                     👥 Joint targets boost sonography knowledge. Active group: <span className="text-white font-bold tracking-wider uppercase">{activeProfile.teamId?.replace('-', ' ')}</span>.
+                  </p>
+               </div>
+            </div>
+         </div>
+
+         {/* Claimable Milestones and Real-World Rewards Panel */}
+         <div className="border border-white/5 bg-[#16181d]/60 rounded-xl p-5 flex flex-col gap-4 font-sans text-white">
+            <div className="flex justify-between items-center border-b border-white/5 pb-2">
+               <h2 className="text-[10px] font-mono uppercase tracking-widest text-[#8e9299] flex items-center gap-1.5 font-bold">
+                  <Crown size={12} className="text-[#ffd700]" />
+                  Milestone Rewards
+               </h2>
+               <span className="text-[9px] font-mono text-[#ffd700] font-bold flex items-center gap-1">
+                  <Coins size={11} /> {activeProfile.coins || 50}
+               </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+               {/* Reward 1 */}
+               <div className="bg-[#0a0b0d] border border-white/5 p-2.5 rounded-lg flex justify-between items-center">
+                  <div className="pr-2">
+                     <h4 className="text-[10.5px] font-bold text-white leading-tight">Registry Discount Pass</h4>
+                     <p className="text-[8px] text-[#8e9299] font-mono mt-0.5">15% off SPI review simulators. (Needs Lvl 2+)</p>
+                  </div>
+                  {Math.floor((activeProfile.xp || 120) / 100) >= 2 ? (
+                     <button
+                       type="button"
+                       onClick={() => showToast("🎫 Voucher claimed! Use code SPI_REVEAL_15 at checkout.", "success")}
+                       className="px-2.5 py-1 text-[8.5px] font-mono font-bold uppercase rounded bg-cyan-500 text-black cursor-pointer shrink-0"
+                     >
+                        Claim
+                     </button>
+                  ) : (
+                     <span className="text-[8px] text-white/30 font-mono flex items-center gap-0.5 shrink-0"><Lock size={9} /> Locked</span>
+                  )}
+               </div>
+
+               {/* Reward 2 */}
+               <div className="bg-[#0a0b0d] border border-white/5 p-2.5 rounded-lg flex justify-between items-center">
+                  <div className="pr-2">
+                     <h4 className="text-[10.5px] font-bold text-white leading-tight">Registry Graduate Seal</h4>
+                     <p className="text-[8px] text-[#8e9299] font-mono mt-0.5">Professional certification badge. (Needs Lvl 5+)</p>
+                  </div>
+                  {Math.floor((activeProfile.xp || 120) / 100) >= 5 ? (
+                     <button
+                       type="button"
+                       onClick={() => showToast("🎓 Certificate Reference RDMS-REF-" + activeProfileId.slice(-4).toUpperCase() + " generated in database archive.", "success")}
+                       className="px-2.5 py-1 text-[8.5px] font-mono font-bold uppercase rounded bg-[#ffd700] text-black cursor-pointer shrink-0"
+                     >
+                        Graduate
+                     </button>
+                  ) : (
+                     <span className="text-[8px] text-white/30 font-mono flex items-center gap-0.5 shrink-0"><Lock size={9} /> Locked</span>
+                  )}
+               </div>
+            </div>
+         </div>
         </div>
 
         {/* Right 8 Cols: Logbook Scanner & Badge Credentials */}
@@ -857,7 +1412,7 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
              <h2 className="text-[10px] font-mono uppercase tracking-widest text-[#8e9299] flex items-center justify-between">
                 <span>Clinical Badge Portfolio • {activeProfile.name}</span>
                 <span className="text-[8px] bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 font-bold px-2 py-0.5 rounded">
-                   Unlocked: {Math.max(1, (isAngleCorrectMaster?1:0)+(totalCompletedScans>0?1:0)+(loggedTurbulentCases?1:0)+(holdsALARAHonor?1:0)+(activeProfile.completedLecturesCount>0?1:0))} / 5
+                   Unlocked: {unlockedBadgesCount} / 6
                 </span>
              </h2>
 
@@ -958,11 +1513,154 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
                       {totalCompletedScans >= 3 ? '✓ SPECIALIST CREDENT' : `⏳ CASES_LOGGED: ${totalCompletedScans} / 3`}
                    </div>
                 </div>
+                 {/* Badge 6: Ultrasound Underground Operative */}
+                 <div className={`p-4 rounded-xl border flex flex-col justify-between transition-all relative overflow-hidden ${isCovertOperative ? 'bg-amber-500/5 border-amber-500/30' : 'bg-[#0c0d10]/50 border-white/5 opacity-50'}`}>
+                    <div>
+                       <div className="flex justify-between items-start mb-2.5">
+                          <div className={`p-2 rounded-lg ${isCovertOperative ? 'bg-amber-500/20 text-amber-500' : 'bg-[#1a1c22] text-[#8e9299]'}`}>
+                             <Zap size={16} />
+                          </div>
+                          <div className="text-[7.5px] font-mono font-bold tracking-widest uppercase">U.U. SPEC-OPS</div>
+                       </div>
+                       <h3 className="text-xs font-bold text-white uppercase font-mono tracking-wide leading-none">Clandestine Agent</h3>
+                       <p className="text-[9.5px] text-[#8e9299] mt-1.5 leading-normal">
+                          Unlocked by joining the elite Ultrasound Underground (U.U.) class cohort. Spec-ops registry solver active.
+                       </p>
+                    </div>
+                    <div className="text-[8px] font-mono text-amber-500 mt-4 font-bold flex items-center gap-1">
+                       {isCovertOperative ? '✓ ACTIVE OPERATIVE' : '⏳ JOIN COHORT'}
+                    </div>
+                 </div>
 
              </div>
           </div>
 
-          {/* Section: Cognitive Quiz Performance & Syllabus Mastery Dashboard */}
+          {/* Section: Ultrasound Underground Tactical Command Deck */}
+         {isCovertOperative ? (
+             <div className="border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.02] to-black rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden shadow-[0_0_20px_rgba(245,158,11,0.03)] border-dashed">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-[#ffd700]/10" />
+                
+                <div className="flex flex-col md:flex-row gap-5 items-center">
+                   <div className="relative shrink-0 select-none group cursor-help">
+                      {/* Interactive dual-glowing laser aura */}
+                      <div className="absolute -inset-1.5 rounded-full bg-gradient-to-tr from-cyan-400 via-[#ffd700] to-[#ff007f] opacity-40 blur-md animate-pulse group-hover:opacity-70 transition-opacity duration-300 animate-spin-slow" />
+                      
+                      <div className="p-1 rounded-full bg-black border border-cyan-400/50 relative shadow-[0_0_20px_rgba(0,240,255,0.35)] transition-all group-hover:scale-105 duration-300">
+                         <img 
+                           src={undercoverUuuBadge} 
+                           alt="Ultrasound Underground Logo" 
+                           className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover filter brightness-110 contrast-110"
+                           referrerPolicy="no-referrer"
+                         />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-cyan-400 to-[#ff007f] text-white rounded-full p-1 border border-black shadow-[0_0_8px_#00f0ff]">
+                         <Atom size={10} className="fill-current animate-pulse" />
+                      </div>
+                   </div>
+
+                   <div className="flex-1 space-y-2 text-center md:text-left">
+                      <span className="text-[9px] font-mono font-black tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded">
+                         🔑 COVERT REGISTRY MODE SPEC-OPS ACCESS
+                      </span>
+                      <h2 className="text-md font-bold text-white font-serif uppercase tracking-wider mt-1.5">
+                         Ultrasound Underground (U.U.) Command Deck
+                      </h2>
+                      <p className="text-xs text-[#8e9299] leading-relaxed max-w-xl font-sans">
+                         Welcome, Operative. Your profile is routing scanning telemetry through our covert frequency tunnel. Maintain optimal wave angles & steering to ensure total stealth.
+                      </p>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                   <div className="bg-black/40 border border-white/5 p-3.5 rounded-lg flex flex-col gap-2.5">
+                      <h4 className="text-[9px] font-mono text-[#8e9299] uppercase tracking-wider border-b border-white/5 pb-1 flex items-center justify-between">
+                         <span>📡 SQUAD OPERATIVE COMMS ON-AIR</span>
+                         <span className="text-green-500 flex items-center gap-1 animate-pulse">● online</span>
+                      </h4>
+                      <div className="space-y-2 text-[10.5px]">
+                         <div className="leading-snug text-white font-mono">
+                            <span className="text-[#ffd700] font-bold font-sans">⚡ Dr. Carter (Doppler Master):</span>{" "}
+                            &quot;Stealth limits locked. High-contrast carotid vectors in place.&quot;
+                         </div>
+                         <div className="leading-snug text-white font-mono">
+                            <span className="text-[#00d1ff] font-bold font-sans">🧬 Dr. Alexander (Imaging stack):</span>{" "}
+                            &quot;Gel bridge active. Secondary impedance match layer cleared.&quot;
+                         </div>
+                         <div className="leading-snug text-white font-mono">
+                            <span className="text-purple-400 font-bold font-sans">🛡️ Tech Sarah (Safety index):</span>{" "}
+                            &quot;Mechanical limits secure. Heat emission below cavitation risk.&quot;
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="bg-black/45 border border-white/5 p-3.5 rounded-lg flex flex-col justify-between gap-3">
+                      <div>
+                         <h4 className="text-[9px] font-mono text-amber-400 uppercase tracking-wider border-b border-white/5 pb-1 flex items-center justify-between">
+                            <span>🛠️ CLANDESTINE TELEMETRY TOOLS</span>
+                            <span className="text-amber-500 font-mono text-[9px] font-bold">U.U.-STEALTH</span>
+                         </h4>
+                         <div className="mt-1.5 space-y-1.5 font-mono text-[10px]">
+                            <div className="flex justify-between">
+                               <span className="text-[#8e9299]">Stealth PRF Frequency:</span>
+                               <span className="text-[#ffd700] font-bold">4.2 kHz (Coiled)</span>
+                            </div>
+                            <div className="flex justify-between">
+                               <span className="text-[#8e9299]">Stealth Sweep Tunnel:</span>
+                               <span className="text-[#00d1ff] font-bold">Encrypted SSL B-Mode</span>
+                            </div>
+                         </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const soundEffect = new Audio("https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg");
+                          soundEffect.volume = 0.15;
+                          soundEffect.play().catch(() => {});
+                          
+                          const currentXp = activeProfile.xp || 120;
+                          const currentCoins = activeProfile.coins || 50;
+                          handleUpdatePersona({
+                             xp: currentXp + 50,
+                             coins: currentCoins + 20
+                          });
+                          showToast("📡 Ultrasound Underground Stealth Sweep launched successfully! Doppler parameters encrypted. +50 XP and +20 Coins secured.", "success");
+                        }}
+                        className="w-full bg-[#ffd700] hover:bg-[#ffe55c] text-black font-mono font-black text-[10.5px] py-2 rounded-lg transition-all shadow-[0_0_12px_rgba(255,215,0,0.1)] hover:shadow-[0_0_15px_rgba(255,215,0,0.2)] select-none shrink-0 cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                         <Sparkles size={11} className="text-black fill-black" />
+                         RUN TACTICAL RESONANCE SWEEP
+                      </button>
+                   </div>
+                </div>
+             </div>
+          ) : (
+             <div 
+               onClick={() => {
+                 const confirmChange = window.confirm("Authorization: Join the Ultrasound Underground (U.U.) class cohort?");
+                 if (confirmChange) {
+                    handleUpdatePersona({ teamId: 'undercover-uuu' });
+                    showToast("🕶️ WELCOME TO THE ULTRASOUND UNDERGROUND (U.U.)! Clandestine registry clearance protocols authorized.", "success");
+                 }
+               }}
+               className="border border-white/5 bg-[#16181d]/20 rounded-xl p-4 flex items-center justify-between hover:bg-[#16181d]/40 border-dashed hover:border-amber-500/20 cursor-pointer group transition-all"
+             >
+                <div className="flex items-center gap-3">
+                   <div className="p-2.5 rounded-full bg-white/5 text-[#8e9299] group-hover:text-amber-400 group-hover:bg-amber-500/10 transition-all border border-white/5">
+                      <Crown size={15} />
+                   </div>
+                   <div>
+                      <h4 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">Ultrasound Underground (U.U.) Cohort Info</h4>
+                      <p className="text-[10px] text-[#8e9299]">Join the elite task force to access the stealth scanning command deck hubs.</p>
+                   </div>
+                </div>
+                <div className="text-[9px] font-mono text-amber-500 font-bold flex items-center gap-1 bg-amber-500/[0.05] border border-amber-500/20 px-2 py-0.5 rounded opacity-80 group-hover:opacity-100 transition-all">
+                   🔒 INFILTRATE COHORT
+                </div>
+             </div>
+          )}
+
+           {/* Section: Cognitive Quiz Performance & Syllabus Mastery Dashboard */}
           <div className="border border-white/5 bg-[#16181d]/40 rounded-xl p-5 flex flex-col gap-5">
              {/* Dashboard Header */}
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/5 pb-4">
@@ -1064,7 +1762,7 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
                 </div>
 
                 {/* Metric 4: Academic Advisor Recommendation */}
-                <div className="bg-[#0a0b0d] rounded-xl p-4 border border-white/5 flex flex-col justify-between min-h-[140px]">
+                <div id="tour-advisor-recommendations" className="bg-[#0a0b0d] rounded-xl p-4 border border-white/5 flex flex-col justify-between min-h-[140px]">
                    <span className="text-[8px] font-mono text-[#8e9299] uppercase tracking-wider font-bold">Advisor Recommendation</span>
                    <p className="text-[9.5px] text-[#e0e0e0]/90 leading-tight font-sans my-1 text-white/80">
                       {passingSpectrum.p_text}
@@ -1083,7 +1781,7 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
                 
                 {/* Left Side: Radar Matrix Chart */}
-                <div className="bg-[#0a0b0d]/50 rounded-xl p-4 border border-white/5 flex flex-col gap-3 lg:col-span-5 h-[290px]">
+                <div id="tour-radar-chart" className="bg-[#0a0b0d]/50 rounded-xl p-4 border border-white/5 flex flex-col gap-3 lg:col-span-5 h-[290px]">
                    <h3 className="text-[10px] font-mono uppercase tracking-widest text-[#8e9299] font-bold">Mastery Spider Matrix</h3>
                    <div className="flex-1 w-full text-xs font-mono select-none">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1379,15 +2077,15 @@ export default function ProfileModule({ setViewMode, dopplerAngle = 60, bloodVel
 
                    <div className="flex flex-col gap-1.5">
                       <label className="text-[8px] text-[#8e9299] uppercase tracking-widest font-bold">AUDIO_NARRATION_PREFERENCE</label>
-                      <div className="grid grid-cols-3 gap-2">
-                         {(['standard', 'bourdain', 'sedaris'] as const).map(style => (
+                      <div className="grid grid-cols-4 gap-2">
+                         {(['standard', 'bourdain', 'sedaris', 'british'] as const).map(style => (
                             <button
                               key={style}
                               type="button"
                               onClick={() => setFormVoice(style)}
-                              className={`py-1.5 border rounded-lg text-[9px] uppercase font-bold transition-all ${formVoice === style ? 'bg-[#00d1ff]/10 border-[#00d1ff] text-[#00d1ff]' : 'bg-transparent border-white/5 text-[#8e9299] hover:text-white'}`}
+                              className={`py-1.5 border rounded-lg text-[8px] uppercase font-bold transition-all ${formVoice === style ? 'bg-[#00d1ff]/10 border-[#00d1ff] text-[#00d1ff]' : 'bg-transparent border-white/5 text-[#8e9299] hover:text-white'}`}
                             >
-                               {style}
+                               {style === 'standard' ? 'Clinical' : style === 'bourdain' ? 'Bourdain' : style === 'sedaris' ? 'Sedaris' : 'British'}
                             </button>
                          ))}
                       </div>

@@ -176,6 +176,10 @@ export const LECTURES: LectureScript[] = [
       Think of Doppler like the sound of an ambulance siren. 
       As it comes towards you, it's high pitched. As it leaves, it's lower. 
       In ultrasound, we color-code this: Red is usually towards, Blue is away.
+
+      Let's also look at the newly added Spectral parameters. Spectral Doppler displays the frequency shift as a waveform. The baseline represents no motion. 
+      The Nyquist limit dictates ambiguity! The limit is exactly half the PRF. If your velocity exceeds this limit, the waveform wraps around. To fix this, you must increase your PRF (velocity scale), lower the transmitted frequency, shift the baseline, or find a shallower sample volume!
+
     `,
     images: [
       { url: 'doppler_shift_graph', caption: 'Frequency Shift vs Reflector Velocity', triggerParagraph: 3 },
@@ -313,6 +317,8 @@ export const LECTURES: LectureScript[] = [
 
       Think of the crystal like a bell. If you hit it, it rings. 
       The Backing Material is like putting your hand on that bell to stop it—creating the short clicks needed for imaging.
+
+      Let's also review your structural Array types. Linear Arrays form a rectangular image, firing in parallel lines. Curvilinear Convex Arrays form a blunted sector, generating a wide clinical footprint. Phased Arrays are electronically steered to sweep a pie-shaped arc, perfect for getting through ribs in cardiac scans!
     `,
     images: [
       { url: 'transducer_cutaway', caption: 'Internal Architecture & Layering', triggerParagraph: 3 },

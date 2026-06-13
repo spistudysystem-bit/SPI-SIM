@@ -201,6 +201,35 @@ export default function VeinArteryVisualizer() {
     return `M ${points.join(' L ')}`;
   }, [time, valsalvaActive, augmentationActive]);
 
+  // CW parameters: Continuous Wave Doppler (Filled in spectral envelope, noisy)
+  const cwPath = useMemo(() => {
+    let points = [];
+    const width = 450;
+    const height = 120;
+    const baseline = 95;
+    
+    for (let x = 0; x <= width; x += 3) {
+      // Periodic cardiac pulse, similar to arterial but often wider/noisier
+      const phase = (x / 75 - time * 1.5) % (Math.PI * 2);
+      let yOffset = 0;
+      
+      const normalizedPhase = phase < 0 ? phase + Math.PI * 2 : phase;
+      
+      if (normalizedPhase < 1.2) {
+        // High velocity systolic peak
+        yOffset = Math.sin(normalizedPhase * (Math.PI / 1.2)) * 80;
+      } else {
+        // Lower velocity diastolic flow with noise
+        const diastolicPhase = (normalizedPhase - 1.2) / (Math.PI * 2 - 1.2);
+        yOffset = 30 * Math.pow(1 - diastolicPhase, 1.2) + Math.random() * 5;
+      }
+      
+      // CW is characterized by filling the spectral window
+      points.push(`${x},${baseline - yOffset}`);
+    }
+    return `M ${points.join(' L ')}`;
+  }, [time]);
+
   // Auto recovery timers for interactive actions
   useEffect(() => {
     if (augmentationActive) {
@@ -619,6 +648,64 @@ export default function VeinArteryVisualizer() {
                 <div className="flex items-center justify-between text-[7px] sm:text-[8px] text-[#8e9299] font-mono border-t border-white/5 pt-1 mt-0.5 leading-none">
                   <span className="text-[#00d1ff] font-extrabold">Inhalation dip (Negative intra-pressure boosts speed)</span>
                   <span className="text-slate-400">Exhalation flow decline pattern</span>
+                </div>
+              </div>
+
+              {/* Plot C: CW Wave */}
+              <div className="bg-[#0a0a0f] border border-[#2d3139] rounded-2xl p-4 flex flex-col h-[165px] relative overflow-hidden justify-between">
+                <div className="absolute top-2 left-4 text-left z-10 leading-none">
+                  <span className="text-[8px] font-mono uppercase font-bold text-amber-400 bg-amber-400/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+                    Continuous Wave (CW) Doppler
+                  </span>
+                  <h4 className="text-[10px] text-white font-extrabold font-mono tracking-tight mt-1.5">SPECTRAL BROADENING (NO RANGE RESOLUTION)</h4>
+                </div>
+                <div className="absolute top-2 right-4 text-right z-10 font-mono text-[8px] text-slate-500">
+                  <span>SWEEP RATE: 50 mm/s</span>
+                </div>
+
+                <div className="flex-1 flex items-end relative overflow-hidden mt-6 mb-2">
+                  {/* Grid Lines */}
+                  <div className="absolute inset-0 flex flex-col justify-around opacity-15 pointer-events-none">
+                    <div className="h-[1px] bg-[#2d3139]" />
+                    <div className="h-[1px] bg-[#2d3139]" />
+                    <div className="h-[1px] bg-[#2d3139]" />
+                  </div>
+
+                  <svg className="w-full h-full overflow-visible">
+                    {/* Fill Area - CW fills to baseline without a spectral window */}
+                    <path 
+                      d={`${cwPath} L 450,120 L 0,120 Z`} 
+                      fill="url(#cwGlow)" 
+                      opacity="0.8"
+                    />
+                    {/* Wave Line peak */}
+                    <path 
+                      d={cwPath} 
+                      fill="none" 
+                      stroke="url(#cwStroke)" 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round"
+                    />
+
+                    {/* Gradient Definitions */}
+                    <defs>
+                      <linearGradient id="cwStroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="50%" stopColor="#f59e0b" />
+                        <stop offset="100%" stopColor="#fbbf24" />
+                      </linearGradient>
+                      <linearGradient id="cwGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" />
+                        <stop offset="50%" stopColor="#d97706" />
+                        <stop offset="100%" stopColor="#000000" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+
+                <div className="flex items-center justify-between text-[7px] sm:text-[8px] text-[#8e9299] font-mono border-t border-white/5 pt-1 mt-0.5 leading-none">
+                  <span className="text-amber-400 font-extrabold">Complete spectral fill (No window)</span>
+                  <span className="text-slate-400">High velocity without Nyquist aliasing limit</span>
                 </div>
               </div>
             </div>

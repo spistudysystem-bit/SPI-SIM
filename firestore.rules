@@ -81,6 +81,11 @@ service cloud.firestore {
       }
     }
 
+    match /shared_audio/{audioId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    
     match /mediaCache/{cacheId} {
       function isValidMedia(data) {
         return data.keys().hasAll(['key', 'base64Data', 'createdAt']) &&
@@ -90,6 +95,16 @@ service cloud.firestore {
       }
       allow get: if isSignedIn();
       allow create: if isSignedIn() && isValidMedia(request.resource.data);
+    }
+
+    match /branding/{configId} {
+      function isBrandingAdmin() {
+        return isSignedIn() &&
+               request.auth.token.email == 'spistudysystem@gmail.com' &&
+               request.auth.token.email_verified == true;
+      }
+      allow read: if true;
+      allow write: if isBrandingAdmin();
     }
     
     // Testing path

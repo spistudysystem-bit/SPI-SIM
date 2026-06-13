@@ -11,6 +11,8 @@ interface RotaryKnobProps {
   color?: 'cyan' | 'purple' | 'amber' | 'emerald' | 'rose';
   disabled?: boolean;
   helpText?: string;
+  isActive?: boolean;
+  onClick?: () => void;
 }
 
 export default function RotaryKnob({
@@ -23,8 +25,11 @@ export default function RotaryKnob({
   unit = '',
   color = 'cyan',
   disabled = false,
-  helpText
+  helpText,
+  isActive = false,
+  onClick
 }: RotaryKnobProps) {
+
   const knobRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef<number>(0);
@@ -209,7 +214,10 @@ export default function RotaryKnob({
   const strokeDashoffset = activeLength * (1 - pct);
 
   return (
-    <div className={`flex flex-col items-center select-none text-center relative p-3 rounded-xl border border-transparent transition-all ${disabled ? 'opacity-40' : colorTheme.bgLight + ' ' + colorTheme.bdrActive + ' bg-black/15 shadow-sm'}`}>
+    <div 
+      onClick={onClick}
+      className={`flex flex-col items-center select-none text-center relative p-3 rounded-xl border transition-all ${disabled ? 'opacity-40 border-transparent bg-black/5' : isActive ? `${colorTheme.bgLight} ${colorTheme.bdrActive} bg-opacity-20` : 'border-transparent bg-black/15 hover:border-white/5'} shadow-sm`}
+    >
       
       {/* Title Header */}
       <div className="text-[10px] font-mono font-bold tracking-wider mb-1 text-slate-300">
@@ -236,7 +244,7 @@ export default function RotaryKnob({
             cy={cy}
             r={arcRadius}
             fill="none"
-            stroke="rgba(255, 255, 255, 0.05)"
+            stroke="var(--knob-base-track, rgba(255, 255, 255, 0.05))"
             strokeWidth="3"
             strokeDasharray={`${activeLength} ${circumference}`}
             strokeLinecap="round"
@@ -261,17 +269,30 @@ export default function RotaryKnob({
 
         {/* Inner Physical Knob Dial */}
         <div 
-          className={`w-12 h-12 rounded-full bg-gradient-to-tr from-[#16181d] to-[#252831] border-2 border-[#3c414d] flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.6),0_0_10px_rgba(255,255,255,0.02)] relative group-hover:border-[#525969]`}
+          className="w-12 h-12 rounded-full border-2 flex items-center justify-center relative group-hover:border-[#525969]/50 shadow-[0_4px_10px_rgba(0,0,0,0.3),0_0_10px_rgba(255,255,255,0.02)]"
           style={{
+            background: 'linear-gradient(to top right, var(--knob-bg-from, #16181d), var(--knob-bg-to, #252831))',
+            borderColor: 'var(--knob-border, #3c414d)',
             transform: `rotate(${angle}deg)`,
             transition: isDragging ? 'none' : 'transform 0.15s ease-out'
           }}
         >
           {/* Knob pointer line */}
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0.5 h-3.5 bg-white/90 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+          <div 
+            className="absolute top-1 left-1/2 -translate-x-1/2 w-0.5 h-3.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)]" 
+            style={{
+              backgroundColor: 'var(--knob-pointer, rgba(255, 255, 255, 0.9))'
+            }}
+          />
           
           {/* Tiny center cap design */}
-          <div className="w-4 h-4 rounded-full bg-black/40 border border-[#4a4f5c]" />
+          <div 
+            className="w-4 h-4 rounded-full border" 
+            style={{
+              backgroundColor: 'var(--knob-center-cap, rgba(0, 0, 0, 0.4))',
+              borderColor: 'var(--knob-center-border, #4a4f5c)'
+            }}
+          />
         </div>
 
         {/* Touch Assist click bounds (invisible backplate for arc clicks) */}

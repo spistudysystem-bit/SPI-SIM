@@ -2,59 +2,112 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Info, Video } from 'lucide-react';
 
+import ShadowingImg from '../../assets/images/artifact_shadowing_1780412446421.png';
+import EnhancementImg from '../../assets/images/artifact_enhancement_1780412462440.png';
+import MirrorImg from '../../assets/images/artifact_mirror_1780412477271.png';
+
 const ARTIFACTS = [
   {
     id: 'reverberation',
     name: 'Reverberation',
-    description: 'Caused by the bouncing of the sound wave between two strong reflectors or a reflector and the transducer face.',
-    logic: 'The machine incorrectly assumes a long "go-return" time means the reflector is deep, rather than multiple bounces.',
-    clues: 'Multiple, equally spaced echoes parallel to the sound beam with decreasing intensity with depth.',
+    category: 'Depth Artifact',
+    description: 'Multiple representations in the image of the same interface. Caused by repeated reflections between two interfaces with high acoustic impedance mismatch (e.g. tissue/bone, tissue/lung).',
+    logic: 'The machine incorrectly assumes a long "go-return" time means the reflector is deep, placing echoes at twice the distance on the display.',
+    clues: 'Multiple, equally spaced horizontal echoes parallel to the sound beam with decreasing intensity with depth.',
     violation: 'Violates: Sound travels directly to a reflector and back.',
     visual: 'lines'
   },
   {
     id: 'shadowing',
     name: 'Shadowing',
-    description: 'A signal-free region appearing deeper than a highly attenuating or reflecting structure.',
-    logic: 'The beam is either entirely reflected (bone) or absorbed (gallstone) by the structure, blocking deeper propagation.',
+    category: 'Attenuation Artifact',
+    description: 'Reduction in amplitude of echoes deep to an attenuating surface or object. Can be clean (tissue/bone) or dirty (soft tissue/lung/bowel).',
+    logic: 'The beam is reflected or absorbed by a highly attenuating structure (bone, gallstone), blocking deeper propagation so deep echoes are extremely low intensity.',
     clues: 'A dark, anechoic streak beneath a bright reflector. Confirms a highly dense or calcified object.',
-    violation: 'Violates: Amplitude of reflections correlates to tissue characteristics.',
-    visual: 'dark-path'
+    violation: 'Violates: Amplitude of reflections correlates directly and purely to tissue characteristics.',
+    visual: 'dark-path',
+    image: ShadowingImg
   },
   {
     id: 'enhancement',
-    name: 'Enhancement',
-    description: 'Hyperechoic (bright) region appearing deeper than a structure with abnormally low attenuation.',
-    logic: 'Sound travels through fluid (cyst) with less energy loss than surrounding tissue, making deeper echoes appear too bright.',
-    clues: 'A bright column beneath a low-attenuating structure. Proof that a dark void is fluid-filled (simple cyst).',
+    name: 'Acoustic Enhancement',
+    category: 'Attenuation Artifact',
+    description: 'Occurs due to reduced attenuation through an area relative to surrounding tissue (e.g. cyst, gallbladder), resulting in an area of increased brightness deep to the structure.',
+    logic: 'Sound travels through fluid with less energy loss than surrounding tissue, meaning echoes from deeper structures are received with greater amplitude.',
+    clues: 'A bright column beneath a low-attenuating fluid-filled structure. Mitigated by adjusting gain and TGC.',
     violation: 'Violates: Uniform attenuation across the entire beam path.',
-    visual: 'bright-path'
+    visual: 'bright-path',
+    image: EnhancementImg
   },
   {
     id: 'mirror',
     name: 'Mirror Image',
-    description: 'A duplicate version of an anatomical structure appearing deeper than the original.',
-    logic: 'Sound reflects off a strong, curved specular reflector (like the diaphragm) before hitting the target and returning.',
-    clues: 'A secondary, fuzzy version of a structure located on the opposite side of a highly reflective membrane.',
-    violation: 'Violates: Sound only travels in a straight line.',
-    visual: 'duplicate'
+    category: 'Reflection Artifact',
+    description: 'A duplicate artifactual version of an anatomical structure appearing deeper than the original. Occurs at specular interfaces like the diaphragm.',
+    logic: 'Sound reflects off a strong specular reflector before hitting the target. Returning echoes follow the same path, and the machine measures total time, displaying it deeper along the line of sight.',
+    clues: 'A secondary, fuzzy version of a structure located on the opposite side of a highly reflective boundary (e.g. liver mass deep to diaphragm).',
+    violation: 'Violates: Sound always travels in a straight line.',
+    visual: 'duplicate',
+    image: MirrorImg
+  },
+  {
+    id: 'slice-thickness',
+    name: 'Slice Thickness',
+    category: 'Beam Dimension Artifact',
+    description: 'Occurs when the imaging plane is thicker than the structure being scanned. Causes low-level echoes (pseudosludge) to appear in otherwise anechoic structures like the bladder or gallbladder.',
+    logic: 'The beam acquires echoes from a relatively thick volume in the Z-elevation plane. The system averages these out across the slice, incorrectly placing off-center echoes inside hollow structures.',
+    clues: 'Faint internal echoes inside cysts or bladders that should remain purely black.',
+    violation: 'Violates: The imaging plane is infinitely thin.',
+    visual: 'elevation_blur'
+  },
+  {
+    id: 'beamwidth',
+    name: 'Beamwidth',
+    category: 'Beam Dimension Artifact',
+    description: 'Causes degradation of lateral resolution leading to lateral smearing of targets that are scanned outside the focal zone or non-perpendicularly.',
+    logic: 'The beam is wider than the target. The machine assumes all echoes return from the thin central axis, so it stretches the point laterally in the image.',
+    clues: 'Smearing of boundaries, prominent at non-perpendicular beam incidence or deep in the far field where the beam diverges.',
+    violation: 'Violates: The ultrasound beam is razor-thin and travels uniformly.',
+    visual: 'lateral-smear'
+  },
+  {
+    id: 'sidelobe',
+    name: 'Sidelobe / Grating Lobe',
+    category: 'Beam Dimension Artifact',
+    description: 'Multiple low-intensity beams outside the central axis (sidelobes) strike a strong reflector and the echoes are wrongly assumed to come from the main beam.',
+    logic: 'Strong reflectors hit by off-axis lobes return echoes that the machine plots straight down the main central axis.',
+    clues: 'Extraneous curved lines or diffuse faint echoes in anechoic areas (like bowel gas projecting into an adjacent gallbladder).',
+    violation: 'Violates: All echoes detected originate exclusively from the central axis.',
+    visual: 'off-axis'
+  },
+  {
+    id: 'refraction',
+    name: 'Refraction (Ghosting)',
+    category: 'Beam Path Artifact',
+    description: 'The beam is bent during transmission (e.g. through rectus muscles acting as a biconvex lens), causing a laterally displaced duplicate image.',
+    logic: 'The system assumes the beam travelled straight. When refracted laterally to hit a target, the returning echo is placed straight down the original path, creating a double.',
+    clues: 'Side-by-side duplication of a structure (e.g., duplicated aorta or gestational sac deep to rectus muscles).',
+    violation: 'Violates: Transmit pulses and echoes travel strictly in a straight line.',
+    visual: 'split-image'
   },
   {
     id: 'comet-tail',
     name: 'Comet Tail',
-    description: 'A continuous, solid hyperechoic line extending downward from a small, strong reflector.',
-    logic: 'Small spacing between reflective surfaces (e.g. cholesterol crystals) causes internal resonance/reverb.',
-    clues: 'A solid, bright, downward-directed tail. Often found in adenomyomatosis of the gallbladder or surgical clips.',
-    violation: 'A form of reverberation with extremely narrow spacing.',
+    category: 'Depth Artifact',
+    description: 'A type of reverberation caused by very closely spaced interfaces (small calcifications), resulting in a short tapering artifact resembling a comet tail.',
+    logic: 'Small spacing limits discernable separate bands; multiple rapid bounces merge into a solid trailing streak.',
+    clues: 'Solid bright tail from microlithiasis or adenomyomatosis.',
+    violation: 'Violates: Sound travels directly to a reflector and back.',
     visual: 'comet'
   },
   {
     id: 'ring-down',
     name: 'Ring Down',
-    description: 'A type of resonance artifact appearing as a vertical streak through the entire image field.',
-    logic: 'Sound waves resonate within a fluid trapped between small gas bubbles, creating a continuous source of energy.',
-    clues: 'A bright, steady vertical line extend through the entire clinical field. Often indicates gas in bowel or abscess.',
-    violation: 'Continuous energy emission from a stationary source.',
+    category: 'Depth Artifact',
+    description: 'Reverberation between multiple small gas bubbles (or resonant ringing), producing a continuous bright streak through the image.',
+    logic: 'High reflection coefficient of bubbles produces high intensity echoes through the whole depth. They resonate and do not return from a discrete point.',
+    clues: 'Steady bright vertical streak. Examples: B-lines in wet lungs or gas in bowel.',
+    violation: 'Violates: Sound travels directly to a reflector and back.',
     visual: 'ring'
   }
 ];
@@ -83,7 +136,7 @@ export default function ArtifactsModule({ setViewMode }: ArtifactsModuleProps) {
           <div className="w-24 h-[1px] bg-[#00d1ff] mt-2 opacity-50 hidden xl:block" />
         </div>
 
-        <div className="flex xl:flex-col gap-2 lg:gap-3 overflow-x-auto xl:overflow-x-visible pb-2 xl:pb-0 no-scrollbar snap-x">
+        <div className="flex xl:flex-col gap-2 lg:gap-3 overflow-x-auto xl:overflow-y-auto pb-2 xl:pb-0 no-scrollbar snap-x h-auto xl:min-h-0 xl:flex-1">
           {ARTIFACTS.map(a => (
             <button
               key={a.id}
@@ -150,64 +203,125 @@ export default function ArtifactsModule({ setViewMode }: ArtifactsModuleProps) {
             <div className="absolute inset-x-0 h-20 bg-gradient-to-b from-[#00d1ff]/10 to-transparent animate-scanning z-0 opacity-50" />
             <div className="absolute inset-0 hud-grid opacity-10 pointer-events-none" />
             
-            <div className="z-10 bg-black/40 p-12 rounded-full border border-white/5 shadow-2xl backdrop-blur-sm relative">
-              {selected.id === 'reverberation' && (
-                <div className="space-y-5 flex flex-col items-center">
-                   {[1, 0.8, 0.6, 0.4, 0.2].map((op, i) => (
+            {selected.image ? (
+              <div className="z-10 relative flex flex-col items-center">
+                 <img src={selected.image} alt={selected.name} className="max-w-full max-h-[300px] object-contain rounded-xl border border-white/10 shadow-2xl" />
+                 <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-xl" />
+              </div>
+            ) : (
+              <div className="z-10 bg-black/40 p-12 rounded-full border border-white/5 shadow-2xl backdrop-blur-sm relative">
+                {selected.id === 'reverberation' && (
+                  <div className="space-y-5 flex flex-col items-center">
+                     {[1, 0.8, 0.6, 0.4, 0.2].map((op, i) => (
+                       <motion.div 
+                          key={i} 
+                          initial={{ width: 0 }} 
+                          animate={{ width: 180 }} 
+                          transition={{ delay: i * 0.1 }}
+                          className="h-1 bg-white rounded-full" 
+                          style={{ opacity: op }} 
+                       />
+                     ))}
+                  </div>
+                )}
+                {selected.id === 'shadowing' && (
+                  <div className="relative flex flex-col items-center">
+                    <div className="w-24 h-24 rounded-full bg-white shadow-[0_0_40px_rgba(255,255,255,0.4)] relative z-20" />
+                    <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-20 h-48 bg-gradient-to-b from-black/80 to-transparent z-10" />
+                  </div>
+                ) }
+                {selected.id === 'enhancement' && (
+                  <div className="relative flex flex-col items-center">
+                     <div className="w-24 h-24 rounded-full border-2 border-[#00d1ff]/50 bg-[#00d1ff]/10 relative z-20" />
+                     <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-20 h-48 bg-gradient-to-b from-white/20 to-transparent z-10 blur-[4px]" />
+                  </div>
+                )}
+                {selected.id === 'mirror' && (
+                  <div className="flex flex-col gap-20 relative items-center">
+                     <div className="w-20 h-20 bg-red-400/20 border-2 border-red-400/60 rounded-xl relative z-20" />
+                     <div className="w-56 h-[1px] bg-[#00d1ff] rotate-[-5deg] shadow-[0_0_15px_#00d1ff] relative z-10" />
+                     <div className="w-20 h-20 bg-red-400/5 border border-red-400/20 rounded-xl blur-[2px] opacity-40 shadow-inner" />
+                  </div>
+                )}
+                {selected.id === 'comet-tail' && (
+                  <div className="flex flex-col items-center">
+                     <div className="w-10 h-10 rotate-45 bg-white shadow-[0_0_20px_white] z-20" />
                      <motion.div 
-                        key={i} 
-                        initial={{ width: 0 }} 
-                        animate={{ width: 180 }} 
-                        transition={{ delay: i * 0.1 }}
-                        className="h-1 bg-white rounded-full" 
-                        style={{ opacity: op }} 
+                        initial={{ height: 0 }}
+                        animate={{ height: 200 }}
+                        className="w-14 bg-gradient-to-b from-white via-[#00d1ff]/50 to-transparent clip-triangle" 
                      />
-                   ))}
-                </div>
-              )}
-              {selected.id === 'shadowing' && (
-                <div className="relative flex flex-col items-center">
-                  <div className="w-24 h-24 rounded-full bg-white shadow-[0_0_40px_rgba(255,255,255,0.4)] relative z-20" />
-                  <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-20 h-48 bg-gradient-to-b from-black/80 to-transparent z-10" />
-                </div>
-              ) }
-              {selected.id === 'enhancement' && (
-                <div className="relative flex flex-col items-center">
-                   <div className="w-24 h-24 rounded-full border-2 border-[#00d1ff]/50 bg-[#00d1ff]/10 relative z-20" />
-                   <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-20 h-48 bg-gradient-to-b from-white/20 to-transparent z-10 blur-[4px]" />
-                </div>
-              )}
-              {selected.id === 'mirror' && (
-                <div className="flex flex-col gap-20 relative items-center">
-                   <div className="w-20 h-20 bg-red-400/20 border-2 border-red-400/60 rounded-xl relative z-20" />
-                   <div className="w-56 h-[1px] bg-[#00d1ff] rotate-[-5deg] shadow-[0_0_15px_#00d1ff] relative z-10" />
-                   <div className="w-20 h-20 bg-red-400/5 border border-red-400/20 rounded-xl blur-[2px] opacity-40 shadow-inner" />
-                </div>
-              )}
-              {selected.id === 'comet-tail' && (
-                <div className="flex flex-col items-center">
-                   <div className="w-10 h-10 rotate-45 bg-white shadow-[0_0_20px_white] z-20" />
-                   <motion.div 
-                      initial={{ height: 0 }}
-                      animate={{ height: 200 }}
-                      className="w-14 bg-gradient-to-b from-white via-[#00d1ff]/50 to-transparent clip-triangle" 
-                   />
-                </div>
-              )}
-              {selected.id === 'ring-down' && (
-                <div className="flex flex-col items-center">
-                   <div className="flex gap-2 mb-[-10px]">
-                      <div className="w-5 h-5 rounded-full border border-white/50 bg-[#00d1ff]/30 animate-bounce" />
-                      <div className="w-4 h-4 rounded-full border border-white/50 bg-[#00d1ff]/20 animate-bounce delay-100" />
-                   </div>
-                   <motion.div 
-                      animate={{ opacity: [0.5, 1, 0.5], width: [2, 6, 2] }}
-                      transition={{ duration: 0.1, repeat: Infinity }}
-                      className="h-56 bg-[#00d1ff] shadow-[0_0_30px_#00d1ff]" 
-                   />
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+                {selected.id === 'ring-down' && (
+                  <div className="flex flex-col items-center">
+                     <div className="flex gap-2 mb-[-10px]">
+                        <div className="w-5 h-5 rounded-full border border-white/50 bg-[#00d1ff]/30 animate-bounce" />
+                        <div className="w-4 h-4 rounded-full border border-white/50 bg-[#00d1ff]/20 animate-bounce delay-100" />
+                     </div>
+                     <motion.div 
+                        animate={{ opacity: [0.5, 1, 0.5], width: [2, 6, 2] }}
+                        transition={{ duration: 0.1, repeat: Infinity }}
+                        className="h-56 bg-[#00d1ff] shadow-[0_0_30px_#00d1ff]" 
+                     />
+                  </div>
+                )}
+                {selected.id === 'slice-thickness' && (
+                  <div className="relative flex flex-col items-center w-48 h-48 rounded-full border-4 border-slate-700 bg-black overflow-hidden">
+                     <div className="absolute inset-0 bg-blue-900/20" />
+                     <motion.div 
+                        animate={{ y: [-10, 10, -10], opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute bottom-0 w-full h-1/3 bg-slate-500/40 blur-md"
+                     />
+                     <div className="absolute inset-x-0 bottom-4 text-center text-[10px] text-white/50 font-mono tracking-widest uppercase">PSEUDOSLUDGE</div>
+                  </div>
+                )}
+                {selected.id === 'beamwidth' && (
+                  <div className="relative flex flex-col items-center justify-center">
+                    <motion.div 
+                       animate={{ scaleX: [1, 2.5, 1] }} 
+                       transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                       className="w-8 h-8 bg-white rounded-full shadow-[0_0_20px_white] blur-[2px]" 
+                    />
+                    <div className="absolute inset-0 border-r border-l border-[#00d1ff]/30 w-32 -translate-x-[40px] pointer-events-none" />
+                  </div>
+                )}
+                {selected.id === 'sidelobe' && (
+                  <div className="relative flex flex-col items-center h-48 w-64 justify-center">
+                     <div className="w-2 h-full bg-[#00d1ff]/40 absolute left-1/2 -translate-x-1/2" />
+                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                       <path d="M50 0 C 30 50, 70 80, 50 100" stroke="rgba(0,209,255,0.2)" strokeWidth="2" fill="none" />
+                       <path d="M50 0 C 70 50, 30 80, 50 100" stroke="rgba(0,209,255,0.2)" strokeWidth="2" fill="none" />
+                     </svg>
+                     <motion.div 
+                        animate={{ opacity: [0.2, 0.8, 0.2] }} 
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="absolute bottom-10 left-10 w-6 h-6 bg-white rounded-full blur-[2px]" 
+                     />
+                     <motion.div 
+                        animate={{ opacity: [0.2, 0.8, 0.2] }} 
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="absolute bottom-10 left-1/2 -translate-x-1/2 w-10 h-2 bg-white/50 rounded-full blur-[2px]" 
+                     />
+                  </div>
+                )}
+                {selected.id === 'refraction' && (
+                  <div className="relative flex gap-8 items-center">
+                     <motion.div 
+                        animate={{ x: [0, -10, 0] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="w-16 h-16 rounded-full border-4 border-emerald-400 bg-emerald-400/20"
+                     />
+                     <motion.div 
+                        animate={{ x: [0, 10, 0], opacity: [0.3, 0.7, 0.3] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="w-16 h-16 rounded-full border-4 border-emerald-400/50 bg-emerald-400/10"
+                     />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Technical breakdown */}

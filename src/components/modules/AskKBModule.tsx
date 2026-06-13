@@ -32,6 +32,7 @@ import {
   doc,
   limit
 } from 'firebase/firestore';
+import agentRPortrait from '../../assets/images/agent_r_ai_portrait_1781263244321.jpg';
 
 interface Message {
   role: 'user' | 'model';
@@ -138,18 +139,33 @@ export default function AskKBModule() {
             <Sparkles size={120} className="text-[#ffd700]" />
          </div>
          
-         <div className="flex flex-col gap-2 relative z-10">
+         <div className="flex flex-col gap-2 relative z-10 w-full lg:w-auto">
             <div className="flex items-center gap-3">
-               <div className="p-2 bg-[#ffd700]/10 rounded-lg">
-                  <BookOpen size={20} className="text-[#ffd700]" />
+               <div className="p-2 bg-yellow-500/15 rounded-lg border border-yellow-500/30">
+                  <Zap size={20} className="text-yellow-500 animate-pulse" />
                </div>
-               <div className="text-[10px] font-mono text-[#ffd700] tracking-[3px] uppercase">Simulation_Core_Knowledge_Base</div>
+               <div className="text-[10px] font-mono text-yellow-500 tracking-[3px] uppercase font-black">U.U.U._COVERT_KNOWLEDGE_LINK</div>
             </div>
-            <h2 className="text-3xl font-serif italic text-white">Ask the <span className="text-[#ffd700]">Tutor</span></h2>
-            <p className="text-[12px] text-[#8e9299] max-w-xl">
-               I've processed the entire Ultrasound Physics Review for you. 
-               Ask me anything about sound props, transducers, resolution, or safety. 
-               I'll provide cliffnotes to save you time.
+            <div className="flex items-center gap-6 mt-2">
+              <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-2xl border-2 border-emerald-500/30 overflow-hidden shrink-0 shadow-[0_0_25px_rgba(52,211,153,0.15)] relative">
+                <img src={agentRPortrait} alt="Agent R - AI Guardian" className="w-full h-full object-cover grayscale brightness-90 mix-blend-screen" />
+                <div className="absolute bottom-1 right-1 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <h2 className="text-3xl font-black text-white hover:text-emerald-400 transition-colors uppercase font-mono tracking-tight leading-none mb-2">
+                  U.U.U. <span className="text-yellow-400">TACTICAL AI</span> SOLVER
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-[#8e9299]">Designation:</span>
+                  <span className="text-[11px] font-mono font-bold text-emerald-400 border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 rounded">AGENT R / REGISTRY GUARDIAN</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-[12px] text-[#8e9299] max-w-xl font-medium font-sans mt-1">
+               Secure sandbox intelligence grounded in the full Ultrasound Underground curriculum. 
+               Ask about sound velocities, damping crystal thickeners, Doppler equations, or registry strategies.
             </p>
          </div>
 
@@ -325,7 +341,7 @@ export default function AskKBModule() {
 
                 <div className="mt-4 text-center">
                    <p className="text-[9px] text-[#8e9299] flex items-center justify-center gap-2">
-                      <Terminal size={10} /> AI grounded in SonicBuild Physics Knowledge Base. Version 2.0.4.
+                      <Terminal size={10} /> AI grounded in Ultrasound Underground Outline database. Version 2.0.4.
                    </p>
                 </div>
             </div>

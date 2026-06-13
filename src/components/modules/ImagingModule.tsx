@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Activity, 
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import RotaryKnob from '../shared/RotaryKnob';
+import AttachedMediaList from '../shared/AttachedMediaList';
 
 interface ImagingModuleProps {
   tgc: number[];
@@ -36,6 +37,174 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
   const [smoothing, setSmoothing] = useState<boolean>(true);
   const [rejection, setRejection] = useState<number>(12); // %
   const [noiseLevel, setNoiseLevel] = useState<number>(15); // Simulated background noise %
+
+  // Premium GE/EPIQ Receiver Chain additions
+  const [lgcLeft, setLgcLeft] = useState<number>(50); // Left lateral gain %
+  const [lgcRight, setLgcRight] = useState<number>(50); // Right lateral gain %
+  const [adcResolution, setAdcResolution] = useState<'8bit' | '12bit' | '16bit'>('16bit'); // Digital beamformer bits
+  const [isAutoOptimizing, setIsAutoOptimizing] = useState<boolean>(false);
+
+  // Physical Ultrasound Console Deck States
+  const [displayDepth, setDisplayDepth] = useState<number>(12); // 6 | 9 | 12 | 15 cm
+  const [focusDepth, setFocusDepth] = useState<number>(3); // 1 to 5 focal zone
+  const [outputPower, setOutputPower] = useState<number>(85); // Acoustic Output % (affects mechanical safety Index)
+  const [isFrozen, setIsFrozen] = useState<boolean>(false);
+  const [tgcManual, setTgcManual] = useState<boolean>(true);
+  const [tgc8, setTgc8] = useState<number[]>([25, 32, 45, 52, 60, 72, 80, 88]); // 8-segment real sliders
+  const [annotationText, setAnnotationText] = useState<string>('LIVER LOBE');
+  const [annotationInput, setAnnotationInput] = useState<string>('');
+  
+  // Trackball dragging coordinates to adjust focal zone position
+  const [trackballAngle, setTrackballAngle] = useState<number>(0);
+  const [isDraggingTrackball, setIsDraggingTrackball] = useState<boolean>(false);
+  
+  // Automatic sector swing sweeper
+  const [sweepAngle, setSweepAngle] = useState<number>(0);
+  const [trackballPos, setTrackballPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+
+  const runAutoOptimization = () => {
+    setIsAutoOptimizing(true);
+    playConsoleBeep('snap');
+    
+    // Simulate real-time signal analysis and automatic control calibration
+    setTimeout(() => {
+      setOverallGain(58); // Optimal average 2D gain
+      setDynamicRange(58); // High detail diagnostic contrast
+      setRejection(8); // Clear small noise scatters without clipping structures
+      setTgcManual(false);
+      setTgcNear(18);
+      setTgcMid(46);
+      setTgcFar(82);
+      setTgc8([15, 22, 35, 48, 56, 68, 78, 88]); // Smooth depth slope compensating attenuation
+      setLgcLeft(50);
+      setLgcRight(50);
+      setIsAutoOptimizing(false);
+      playConsoleBeep('beep');
+    }, 900);
+  };
+
+  const handleTgcSliderChange = (idx: number, newVal: number) => {
+    const updated = [...tgc8];
+    updated[idx] = newVal;
+    setTgc8(updated);
+    playConsoleBeep('relay');
+  };
+
+  const handleTrackballMove = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    let clientX = 0;
+    let clientY = 0;
+    
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+    setTrackballPos({ x, y });
+    
+    // Changing trackballPos gently shifts sweep center or gain ratio!
+    if (!isFrozen) {
+      // Optoelectronic light clicks
+      playConsoleBeep('relay');
+    }
+  };
+
+  // Web Audio Synthesizer for high-fidelity mechanical clicks
+  const playConsoleBeep = (type: 'relay' | 'beep' | 'snap') => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      const now = ctx.currentTime;
+      
+      if (type === 'relay') {
+        // High frequency micro click
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.05);
+        gainNode.gain.setValueAtTime(0.06, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'beep') {
+        // Clinical validation chime
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now); // B5 note
+        osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6 chimes
+        gainNode.gain.setValueAtTime(0.08, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.26);
+      } else if (type === 'snap') {
+        // Polar shutter capture sync noise
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(440, now + 0.04);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+        
+        const bufferSize = ctx.sampleRate * 0.15;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.12, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        noise.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        
+        gainNode.gain.setValueAtTime(0.08, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        osc.start(now);
+        noise.start(now);
+        osc.stop(now + 0.16);
+        noise.stop(now + 0.15);
+      }
+    } catch (e) {
+      // AudioContext failed
+    }
+  };
+
+  // Sync B-Mode scan sector sweep
+  useEffect(() => {
+    if (isFrozen) return;
+    let animId: number;
+    let start = Date.now();
+    const update = () => {
+      const elapsed = (Date.now() - start) / 1000;
+      setSweepAngle(Math.sin(elapsed * 4.2) * 31); // swift 31 deg swing
+      animId = requestAnimationFrame(update);
+    };
+    animId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animId);
+  }, [isFrozen]);
+
+  // Synchronize 8-band TGC sliders with Near, Mid, Far metrics
+  useEffect(() => {
+    if (tgcManual) {
+      const computedNear = Math.round((tgc8[0] + tgc8[1]) / 2);
+      const computedMid = Math.round((tgc8[2] + tgc8[3] + tgc8[4]) / 3);
+      const computedFar = Math.round((tgc8[5] + tgc8[6] + tgc8[7]) / 3);
+      setTgcNear(computedNear);
+      setTgcMid(computedMid);
+      setTgcFar(computedFar);
+    }
+  }, [tgc8, tgcManual]);
 
   const steps = [
     { 
@@ -91,6 +260,19 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
     setSmoothing(true);
     setRejection(12);
     setNoiseLevel(15);
+    setLgcLeft(50);
+    setLgcRight(50);
+    setAdcResolution('16bit');
+    setIsAutoOptimizing(false);
+    setDisplayDepth(12);
+    setFocusDepth(3);
+    setOutputPower(85);
+    setIsFrozen(false);
+    setTgcManual(true);
+    setTgc8([25, 32, 45, 52, 60, 72, 80, 88]);
+    setAnnotationText('LIVER LOBE');
+    setAnnotationInput('');
+    playConsoleBeep('beep');
   };
 
   // Helper to generate the simulated raw and processed ultrasound sound waves
@@ -101,41 +283,44 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
 
     for (let i = 0; i <= stepsCount; i++) {
       const x = i;
-      const depthCm = (i / stepsCount) * 12; // 0 to 12cm depth
+      const depthCm = (i / stepsCount) * displayDepth; // Dynamic depth based on active console depth selection
 
       // 1. Raw Acoustic Sound & Anatomical Target Echoes
       let targetEcho = 0;
       // Background scatter
-      let tissueScatter = Math.sin(depthCm * 8) * 6 * Math.cos(depthCm * 17);
+      let tissueScatter = Math.sin(depthCm * (96 / displayDepth)) * 6 * Math.cos(depthCm * (204 / displayDepth));
 
       if (selectedModel === 'cyst') {
         // Cyst is fluid-filled: no internal echoes, high transmission, acoustic enhancement deep to it
-        if (depthCm >= 4 && depthCm <= 8) {
+        if (depthCm >= (4 * (displayDepth / 12)) && depthCm <= (8 * (displayDepth / 12))) {
           tissueScatter = Math.sin(depthCm * 35) * 1.0; // very low internal echoes
-        } else if (depthCm > 8) {
+        } else if (depthCm > (8 * (displayDepth / 12))) {
           tissueScatter *= 2.2; // Posterior Acoustic Enhancement (brighter deep echoes!)
         }
       } else if (selectedModel === 'stone') {
         // Stone is calcium-dense: strong reflection boundary, complete acoustic shadow deep to it
-        if (depthCm >= 4.8 && depthCm <= 5.4) {
+        if (depthCm >= (4.8 * (displayDepth / 12)) && depthCm <= (5.4 * (displayDepth / 12))) {
           targetEcho = 45; // huge calcium boundary reflection!
-        } else if (depthCm > 5.4) {
-          tissueScatter *= 0.12; // Severe Acoustic Shadowing (dark deep trace!)
+        } else if (depthCm > (5.4 * (displayDepth / 12))) {
+          tissueScatter *= 0.12; // Severe Acoustic Shadowing (dark deep shadow!)
         }
       } else {
         // Normal hepatic structures: normal periodic blood vessels & parenchymal noise
-        if (depthCm >= 5 && depthCm <= 6.5) {
+        if (depthCm >= (5 * (displayDepth / 12)) && depthCm <= (6.5 * (displayDepth / 12))) {
           tissueScatter = Math.sin(depthCm * 12) * 1.5; // dark vessel fluid lumen
         }
       }
 
+      // Output Transmit Power affects initial acoustic wave strength
+      const powerAmplify = outputPower / 85;
+
       // Attenuation as sound travels down (sound energy lost exponentially)
       // Attenuation = 0.5 dB/cm/MHz * Depth * Frequency
       const attenuationFactor = Math.exp(-0.15 * baseFreq * (depthCm * 0.25));
-      let waveVal = (tissueScatter + targetEcho) * attenuationFactor;
+      let waveVal = (tissueScatter + targetEcho) * attenuationFactor * powerAmplify;
 
       // Add high frequency carrier wave components
-      waveVal += Math.sin(depthCm * 32.0) * 8 * attenuationFactor;
+      waveVal += Math.sin(depthCm * (384 / displayDepth)) * 8 * attenuationFactor * powerAmplify;
 
       // Save raw un-amplified signal (with noise)
       // Let's add low-level system background noise floor
@@ -155,6 +340,15 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
       // Boosts everything uniformly
       const ampFactor = overallGain / 55;
       processed *= ampFactor;
+
+      // Digital Quantization (Beamformer ADCs Stage)
+      if (adcResolution === '8bit') {
+        const quantStep = 7.0; // Coarse step quantization
+        processed = Math.round(processed / quantStep) * quantStep;
+      } else if (adcResolution === '12bit') {
+        const quantStep = 2.0; // Fine-grained digital boundary
+        processed = Math.round(processed / quantStep) * quantStep;
+      }
 
       // Step 2: Compensation (Depth selective gain / TGC)
       let currentTgc = tgcNear;
@@ -367,6 +561,7 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
         </aside>
 
         {/* RIGHT COLUMN: Oscilloscope, Controls, and Live Visual Ultrasound Scans */}
+        <AttachedMediaList module="imaging" />
         <main className="col-span-12 xl:col-span-8 flex flex-col gap-4">
           
           {/* TOP CONTROLS BOARD: Real-time Sliders depending on Active Step */}
@@ -637,9 +832,16 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                     B-Mode Live Scan
                   </span>
                 </div>
-                <div className="text-[7.5px] font-mono text-cyan-400 uppercase">
-                  Sector FOV // {selectedModel.toUpperCase()}
-                </div>
+                {isFrozen ? (
+                  <span className="text-[8.5px] font-mono font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded animate-pulse">
+                    ❄️ ACQ FROZEN
+                  </span>
+                ) : (
+                  <div className="text-[7.5px] font-mono text-cyan-400 uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                    Sector FOV // {selectedModel.toUpperCase()}
+                  </div>
+                )}
               </div>
 
               {/* B-MODE SIMULATOR SCREEN */}
@@ -648,13 +850,29 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                 <div className="absolute inset-0 hud-grid opacity-5 pointer-events-none" />
 
                 {/* Lateral Depth Gauge ticks */}
-                <div className="absolute right-2 inset-y-8 flex flex-col justify-between text-[7.5px] font-mono text-slate-500 select-none">
+                <div className="absolute right-2 inset-y-8 flex flex-col justify-between text-[7px] font-mono text-slate-500 select-none">
                   <span>0 cm</span>
-                  <span>3 cm</span>
-                  <span>6 cm</span>
-                  <span>9 cm</span>
-                  <span>12 cm</span>
+                  <span>{ (displayDepth * 0.25).toFixed(1) }</span>
+                  <span>{ (displayDepth * 0.50).toFixed(1) }</span>
+                  <span>{ (displayDepth * 0.75).toFixed(1) }</span>
+                  <span>{ displayDepth } cm</span>
                 </div>
+
+                {/* Left side focal carets */}
+                <div className="absolute left-2.5 inset-y-8 flex flex-col justify-between text-[6.5px] font-mono text-yellow-500/80 pointer-events-none select-none">
+                  <span className={focusDepth === 1 ? "text-yellow-400 font-extrabold scale-110" : "opacity-20"}>◀ F1</span>
+                  <span className={focusDepth === 2 ? "text-yellow-400 font-extrabold scale-110" : "opacity-20"}>◀ F2</span>
+                  <span className={focusDepth === 3 ? "text-yellow-400 font-extrabold scale-110" : "opacity-30"}>◀ F3 (TGT)</span>
+                  <span className={focusDepth === 4 ? "text-yellow-400 font-extrabold scale-110" : "opacity-20"}>◀ F4</span>
+                  <span className={focusDepth === 5 ? "text-yellow-400 font-extrabold scale-110" : "opacity-20"}>◀ F5</span>
+                </div>
+
+                {/* Custom Patient Label Stamp overlay */}
+                {annotationText && (
+                  <div className="absolute bottom-6 left-6 text-[7.5px] font-mono text-emerald-400/90 font-bold tracking-widest uppercase bg-black/60 px-1 py-0.5 rounded border border-emerald-500/20 select-none pointer-events-none">
+                    🔖 ANNOTATION: {annotationText}
+                  </div>
+                )}
 
                 {/* Simulated Sector Probe Cone Area */}
                 <div className="relative w-full h-full flex items-center justify-center">
@@ -666,21 +884,29 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                     <path 
                       d="M50 0 L26 70 A 55 55 0 0 0 74 70 Z" 
                       fill="url(#liverTexture)" 
-                      opacity={Math.min(1, Math.max(0, (overallGain / 75) * (1.0 + tgcNear / 90) * (activeStep >= 1 ? 1.0 : 0.6)))} 
+                      opacity={Math.min(1.0, Math.max(0.1, (overallGain / 75) * (1.0 + tgcNear / 90) * (activeStep >= 1 ? 1.0 : 0.6) * (outputPower / 85)))} 
                     />
 
                     {/* Mid Field Pathology & Background */}
                     <path 
                       d="M50 0 L18 90 A 65 65 0 0 0 82 90 Z" 
                       fill="url(#midFieldTexture)" 
-                      opacity={Math.min(1, Math.max(0, (overallGain / 80) * (1.0 + tgcMid / 80) * (activeStep >= 1 ? 1.0 : 0.35)))} 
+                      opacity={Math.min(1.0, Math.max(0.05, (overallGain / 80) * (1.0 + tgcMid / 80) * (activeStep >= 1 ? 1.0 : 0.35) * (outputPower / 85)))} 
                     />
 
                     {/* Pathology Target Layer overlays inside mid field */}
                     {selectedModel === 'cyst' && (
                       <>
-                        {/* Fluid filled cyst: black hypoechoic center */}
-                        <circle cx="50" cy="55" r="11" fill="#020304" stroke="#e0e0e0" strokeWidth="0.5" strokeOpacity="0.2" />
+                        <circle 
+                          cx="50" 
+                          cy="55" 
+                          r="11" 
+                          fill="#020304" 
+                          stroke="#e0e0e0" 
+                          strokeWidth="0.5" 
+                          strokeOpacity={focusDepth === 3 ? "0.6" : "0.2"} 
+                          style={{ filter: focusDepth === 3 ? 'none' : 'blur(1.4px)' }}
+                        />
                         {/* Acoustic enhancement deep to fluid */}
                         <polygon 
                           points="39,63 61,63 68,95 32,95" 
@@ -698,8 +924,9 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                           fill="#ffffff" 
                           stroke="#00d1ff" 
                           strokeWidth="0.5" 
-                          opacity={Math.min(1, Math.max(0.1, (overallGain / 50)))} 
-                          className="animate-pulse"
+                          opacity={Math.min(1.0, Math.max(0.1, (overallGain / 55) * (outputPower / 85)))} 
+                          className={isFrozen ? "" : "animate-pulse"}
+                          style={{ filter: focusDepth === 3 ? 'none' : 'blur(1.2px)' }}
                         />
                         {/* Complete posterior shadowing behind the stone */}
                         <polygon 
@@ -712,7 +939,32 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                     )}
 
                     {selectedModel === 'normal' && (
-                      <ellipse cx="50" cy="55" rx="8" ry="4" fill="none" stroke="#ffffff" strokeWidth="0.5" opacity="0.3" strokeDasharray="1 1" />
+                      <ellipse 
+                        cx="50" 
+                        cy="55" 
+                        rx="8" 
+                        ry="4" 
+                        fill="none" 
+                        stroke="#ffffff" 
+                        strokeWidth="0.5" 
+                        opacity={focusDepth === 3 ? "0.6" : "0.2"} 
+                        strokeDasharray="1 1" 
+                        style={{ filter: focusDepth === 3 ? 'none' : 'blur(1px)' }}
+                      />
+                    )}
+
+                    {/* Live beam swing sweep line */}
+                    {!isFrozen && (
+                      <line
+                        x1="50"
+                        y1="1"
+                        x2={50 + 44 * Math.sin((sweepAngle * Math.PI) / 180)}
+                        y2={0 + 84 * Math.cos((sweepAngle * Math.PI) / 180)}
+                        stroke="#00d1ff"
+                        strokeWidth="1.2"
+                        strokeOpacity="0.75"
+                        style={{ filter: "drop-shadow(0 0 3px rgba(0, 209, 255, 0.8))" }}
+                      />
                     )}
 
                     {/* Grayscale palette gradient overlay simulating Compression changes */}
@@ -728,6 +980,17 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                       pointerEvents="none" 
                     />
 
+                    {/* Lateral Gain Compensation Overlay (LGC Left/Right balance) */}
+                    <rect 
+                      x="0" 
+                      y="0" 
+                      width="100" 
+                      height="100" 
+                      fill="url(#lgcOverlay)" 
+                      clipPath="url(#sectorClip)"
+                      pointerEvents="none" 
+                    />
+
                     {/* Demodulation filter: if demodulation is OFF, draw raw RF noise cycles across pixel cone */}
                     {!(activeStep >= 3 && rectification && smoothing) && (
                       <path 
@@ -740,8 +1003,21 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                       />
                     )}
 
+                    {/* Active Auto Optimization (iSCAN / Auto-Opt) Interceptor Shield */}
+                    {isAutoOptimizing && (
+                      <g opacity="0.92">
+                        <path d="M50 0 L15 100 A 70 70 0 0 0 85 100 Z" fill="#080a0f" />
+                        <circle cx="50" cy="50" r="16" fill="none" stroke="#00d1ff" strokeWidth="1" strokeDasharray="4 2" className="animate-spin" style={{ transformOrigin: '50% 50%' }} />
+                        <text x="50" y="47" fill="#00d1ff" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold" className="animate-pulse">iSCAN ACTIVE</text>
+                        <text x="50" y="55" fill="#8e9299" fontSize="3" fontFamily="monospace" textAnchor="middle" letterSpacing="0.5">EQUALIZING SCATTER...</text>
+                      </g>
+                    )}
+
                     {/* Defs block */}
                     <defs>
+                      <clipPath id="sectorClip">
+                        <path d="M50 0 L15 100 A 70 70 0 0 0 85 100 Z" />
+                      </clipPath>
                       <radialGradient id="liverTexture" cx="50%" cy="50%" r="50%">
                         <stop offset="0%" stopColor="#8e9299" stopOpacity="0.8"/>
                         <stop offset="100%" stopColor="#111317" stopOpacity="0.1"/>
@@ -760,6 +1036,11 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                         <stop offset="50%" stopColor="#000000" stopOpacity="0.3"/>
                         <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
                       </linearGradient>
+                      <linearGradient id="lgcOverlay" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#000000" stopOpacity={Math.max(0, 1.0 - (lgcLeft / 50))} />
+                        <stop offset="50%" stopColor="#000000" stopOpacity="0" />
+                        <stop offset="100%" stopColor="#000000" stopOpacity={Math.max(0, 1.0 - (lgcRight / 50))} />
+                      </linearGradient>
                     </defs>
                   </svg>
 
@@ -768,11 +1049,15 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                     <div>DR: {dynamicRange} dB</div>
                     <div>TGC SLOPE: {tgcNear < tgcFar ? 'NORMAL' : 'STEEP'}</div>
                     <div>FREQ: 5.0 MHz</div>
+                    <div>DPTH: {displayDepth} cm</div>
                   </div>
 
                   <div className="absolute top-2 right-2 text-[6.5px] font-mono text-emerald-400 text-right space-y-0.5">
-                    <div>MI: { (0.9 + (overallGain / 100)).toFixed(2) }</div>
-                    <div>TIB: 0.4</div>
+                    <div className={((outputPower / 85) * (0.9 + (overallGain / 130))).toFixed(2) > "1.4" ? "text-amber-400 font-extrabold animate-pulse" : ""}>
+                      MI: { ((outputPower / 85) * (0.9 + (overallGain / 130))).toFixed(2) }
+                    </div>
+                    <div>TI: { ((outputPower / 85) * 0.4).toFixed(1) }</div>
+                    <div>PWR: {outputPower}%</div>
                     <div>REJ: {rejection}%</div>
                   </div>
                 </div>
@@ -783,6 +1068,469 @@ export default function ImagingModule({ tgc: initialTgc }: ImagingModuleProps) {
                   {selectedModel === 'normal' && 'STABLE LIV_04 SCATTER PROFILE'}
                 </div>
               </div>
+            </div>
+
+          </div>
+
+          {/* PHYSICAL PHILIPS iU22 INSPIRED CONSOLE PANEL */}
+          <div className="bg-gradient-to-b from-[#1c1f26] to-[#12141a] border-2 border-[#3b4252] rounded-3xl p-6 shadow-2xl relative overflow-hidden font-sans space-y-6">
+            
+            {/* Top Deck: Brushed Metal Status Plate */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#2d3139] pb-4 gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(0,209,255,0.7)]" />
+                  <h3 className="text-sm font-black text-slate-100 uppercase tracking-widest">
+                    Philips iU22 Intelligent Console Core
+                  </h3>
+                </div>
+                <p className="text-[10px] text-[#8e9299] uppercase font-mono mt-0.5">
+                  Ergonomic Physical Operator Deck // Sono-Acoustic Active Diagnostics
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 bg-[#0a0c10]/80 px-4 py-2 rounded-xl border border-white/5 font-mono text-[9px]">
+                <div className="text-slate-400 flex items-center gap-1.5">
+                  <Sliders size={11} className="text-cyan-400" />
+                  CONSOLE BEAM STATE:
+                </div>
+                <span className={isFrozen ? "text-rose-400 font-extrabold animate-pulse" : "text-emerald-400 font-extrabold"}>
+                  {isFrozen ? "[FROZEN]" : "[ACTIVE_SWEEP_CONTINUOUS_5MHz]"}
+                </span>
+                <button
+                  id="h-probe-power"
+                  onClick={() => {
+                    playConsoleBeep('beep');
+                    setIsFrozen(!isFrozen);
+                  }}
+                  className="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-300 font-bold px-2 py-1 rounded border border-white/10 uppercase tracking-wide text-[8.5px] transition-colors"
+                >
+                  Power Sweep Toggle
+                </button>
+              </div>
+            </div>
+
+            {/* Main Interactive Deck Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              
+              {/* ZONE A: 8-Band Segmented TGC Sliders Console */}
+              <div className="col-span-12 lg:col-span-4 bg-[#0d0f14] p-4 rounded-2xl border border-white/5 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[9.5px] font-mono tracking-wider text-slate-300 font-bold uppercase flex items-center gap-1.5">
+                      <Sliders size={12} className="text-yellow-500" />
+                      8-Band TGC slide potentiometers
+                    </span>
+                    <span className="text-[7.5px] font-mono text-yellow-500/80 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/15">
+                      Philips iU22 Mode
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-[#8e9299] uppercase font-mono mb-4 leading-relaxed">
+                    Over-compensates depth attenuation profiles. Near field, central liver tissue, to deep posterior boundaries.
+                  </p>
+                </div>
+
+                {/* 8 TGC Sliders */}
+                <div className="space-y-2.5 my-2">
+                  {tgc8.map((val, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <span className="w-12 text-[8px] font-mono text-slate-400 text-right uppercase">
+                        CH_0{idx + 1} ({idx < 2 ? "Near" : idx < 5 ? "Mid" : "Far"})
+                      </span>
+                      <div className="flex-1 flex items-center gap-2 relative group">
+                        {/* Tooltip */}
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#16181d] border border-yellow-500/30 text-[#ffd700] text-[9.5px] font-mono px-2 py-0.5 rounded shadow-xl pointer-events-none z-20 whitespace-nowrap">
+                          {idx < 2 ? "Near Field" : idx < 5 ? "Mid Field" : "Far Field"} Applied Gain: {val} dB
+                        </div>
+                        <input
+                          id={`tgc-manual-slider-${idx}`}
+                          type="range"
+                          min="0"
+                          max="99"
+                          value={val}
+                          onChange={(e) => {
+                            const newVal = parseInt(e.target.value);
+                            handleTgcSliderChange(idx, newVal);
+                          }}
+                          className="flex-1 h-2 rounded bg-slate-800 accent-yellow-500 cursor-pointer"
+                        />
+                        <span className="w-6 text-[8.5px] font-mono text-yellow-400 font-bold">
+                          {val}dB
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Lateral Gain Compensation (LGC) Dual Slide Pots */}
+                <div className="border-t border-[#2d3139]/40 pt-3 mt-1 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-mono tracking-wider text-slate-300 font-bold uppercase flex items-center gap-1.5">
+                      <Sliders size={11} className="text-[#00d1ff]" />
+                      Lateral Gain Compensation (LGC)
+                    </span>
+                    <span className="text-[7px] font-mono text-[#00d1ff] bg-[#00d1ff]/5 px-2 py-0.5 rounded border border-[#00d1ff]/15">
+                      Dual Side Pots
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pb-2">
+                    {/* LGC Left slider */}
+                    <div className="bg-[#151922]/50 p-2 rounded-xl border border-white/5 space-y-1">
+                      <div className="flex justify-between text-[8px] font-mono font-bold text-slate-400 uppercase">
+                        <span>LGC LEFT</span>
+                        <span className="text-cyan-400">{lgcLeft}%</span>
+                      </div>
+                      <input
+                        id="lgc-left"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={lgcLeft}
+                        onChange={(e) => {
+                          setLgcLeft(parseInt(e.target.value));
+                          playConsoleBeep('relay');
+                        }}
+                        className="w-full h-1 bg-slate-800 accent-cyan-500 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* LGC Right slider */}
+                    <div className="bg-[#151922]/50 p-2 rounded-xl border border-white/5 space-y-1">
+                      <div className="flex justify-between text-[8px] font-mono font-bold text-slate-400 uppercase">
+                        <span>LGC RIGHT</span>
+                        <span className="text-cyan-400">{lgcRight}%</span>
+                      </div>
+                      <input
+                        id="lgc-right"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={lgcRight}
+                        onChange={(e) => {
+                          setLgcRight(parseInt(e.target.value));
+                          playConsoleBeep('relay');
+                        }}
+                        className="w-full h-1 bg-slate-800 accent-cyan-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[7.5px] text-[#8e9299] font-mono uppercase bg-black/40 p-2 rounded mt-2 border border-white/5">
+                  Slide left/right to sculpt gain increments manually. Auto-syncs live near (Ch 1-2), mid (Ch 3-5), far (Ch 6-8) receivers!
+                </div>
+              </div>
+
+              {/* ZONE B: Rotary Knobs Deck & Alphanumeric Operator Notes Core */}
+              <div className="col-span-12 md:col-span-6 lg:col-span-5 bg-[#0d0f14] p-4 rounded-2xl border border-white/5 flex flex-col justify-between gap-5">
+                
+                {/* Rotary Knobs Subsection */}
+                <div>
+                  <h4 className="text-[9.5px] font-mono tracking-wider text-slate-300 font-bold uppercase mb-3 flex items-center gap-1.5">
+                    <Activity size={12} className="text-cyan-400" />
+                    B-Mode Rotary Receiver Knobs
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    
+                    {/* Master B-Mode Gain Knob */}
+                    <div className="bg-[#151922] p-3 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] font-mono text-slate-300 font-bold uppercase mb-1">
+                        B-Mode Gain
+                      </span>
+                      <RotaryKnob
+                        value={overallGain}
+                        onChange={(val) => {
+                          setOverallGain(val);
+                          playConsoleBeep('relay');
+                        }}
+                        min={10}
+                        max={99}
+                        label="Gain"
+                        color="cyan"
+                      />
+                      <span className="text-[8.5px] font-mono text-cyan-400 mt-2 font-black">
+                        {overallGain} dB
+                      </span>
+                    </div>
+
+                    {/* Focus Depth Knob */}
+                    <div className="bg-[#151922] p-3 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] font-mono text-slate-300 font-bold uppercase mb-1">
+                        Focus Zone
+                      </span>
+                      <RotaryKnob
+                        value={focusDepth * 18}
+                        onChange={(val) => {
+                          const level = Math.max(1, Math.min(5, Math.ceil(val / 18)));
+                          if (level !== focusDepth) {
+                            setFocusDepth(level);
+                            playConsoleBeep('relay');
+                          }
+                        }}
+                        min={10}
+                        max={90}
+                        label="Focus"
+                        color="amber"
+                      />
+                      <span className="text-[8.5px] font-mono text-yellow-400 mt-2 font-black uppercase">
+                        Level F{focusDepth}
+                      </span>
+                    </div>
+
+                    {/* Acoustic Output Transmit Power */}
+                    <div className="bg-[#151922] p-3 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] font-mono text-slate-300 font-bold uppercase mb-1">
+                        Output Power
+                      </span>
+                      <RotaryKnob
+                        value={outputPower}
+                        onChange={(val) => {
+                          setOutputPower(val);
+                          playConsoleBeep('relay');
+                        }}
+                        min={10}
+                        max={99}
+                        label="PWR"
+                        color="rose"
+                      />
+                      <span className="text-[8.5px] font-mono text-sky-400 mt-2 font-black">
+                        {outputPower}%
+                      </span>
+                    </div>
+
+                    {/* Display Depth Penetration Knob */}
+                    <div className="bg-[#151922] p-3 rounded-xl border border-[#2d3139]/20 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] font-mono text-slate-300 font-bold uppercase mb-1">
+                        Display Depth
+                      </span>
+                      <RotaryKnob
+                        value={displayDepth * 6.6}
+                        onChange={(val) => {
+                          const depths = [3.0, 6.0, 9.0, 12.0, 15.0];
+                          const selectedIndex = Math.max(0, Math.min(4, Math.floor(val / 18)));
+                          const targetDepth = depths[selectedIndex];
+                          if (targetDepth !== displayDepth) {
+                            setDisplayDepth(targetDepth);
+                            playConsoleBeep('relay');
+                          }
+                        }}
+                        min={10}
+                        max={90}
+                        label="Depth"
+                        color="emerald"
+                      />
+                      <span className="text-[8.5px] font-mono text-emerald-400 mt-2 font-black">
+                        {displayDepth} cm
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* nSIGHT Digital Beamformer ADC Resolution Selector */}
+                <div className="bg-[#151922]/40 p-3 rounded-xl border border-white/5 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-mono tracking-wider text-slate-300 font-bold uppercase flex items-center gap-1.5">
+                      <Zap size={11} className="text-[#00d1ff] shrink-0" />
+                      nSIGHT ADC Quantization (Bit Depth)
+                    </span>
+                    <span className="text-[7.5px] font-mono text-cyan-400 font-medium">Digital Beamformer</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 bg-[#0a0c10] p-1 border border-[#2d3139]/80 rounded-lg">
+                    <button
+                      onClick={() => {
+                        setAdcResolution('16bit');
+                        playConsoleBeep('relay');
+                      }}
+                      className={`px-2 py-1 text-[8.5px] font-mono font-bold uppercase rounded-md text-center cursor-pointer transition-all ${
+                        adcResolution === '16bit'
+                          ? 'bg-[#00d1ff]/10 text-[#00d1ff] border border-[#00d1ff]/20'
+                          : 'text-slate-550 hover:text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      16-Bit (Smooth)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAdcResolution('12bit');
+                        playConsoleBeep('relay');
+                      }}
+                      className={`px-2 py-1 text-[8.5px] font-mono font-bold uppercase rounded-md text-center cursor-pointer transition-all ${
+                        adcResolution === '12bit'
+                          ? 'bg-[#00d1ff]/10 text-[#00d1ff] border border-[#00d1ff]/20'
+                          : 'text-slate-550 hover:text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      12-Bit (Fine)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAdcResolution('8bit');
+                        playConsoleBeep('relay');
+                      }}
+                      className={`px-2 py-1 text-[8.5px] font-mono font-bold uppercase rounded-md text-center cursor-pointer transition-all ${
+                        adcResolution === '8bit'
+                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          : 'text-slate-550 hover:text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      8-Bit (Coarse)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Operator Patient Alphanumeric Membrane Panel */}
+                <div>
+                  <h4 className="text-[9.5px] font-mono tracking-wider text-slate-300 font-bold uppercase mb-2 flex items-center gap-1.5">
+                    <Eye size={12} className="text-emerald-400" />
+                    Membrane Annotation Keyboard Pad
+                  </h4>
+                  <div className="space-y-2">
+                    <input
+                      id="console-patient-input"
+                      type="text"
+                      maxLength={24}
+                      value={annotationText}
+                      onChange={(e) => setAnnotationText(e.target.value)}
+                      placeholder="#Enter Patient Diagnosis Note/Label Stamp..."
+                      className="w-full bg-[#181d24] border border-[#2d3139] rounded-lg px-3 py-1.5 text-[10px] font-mono text-emerald-400 placeholder-[#8e9299]/50 focus:outline-none focus:border-emerald-500"
+                    />
+                    <div className="flex flex-wrap gap-1">
+                      {["STONE", "CYST", "NORMAL LIVER", "PORTAL VEIN", "LIV_FL_02", "CLEAR"].map((stamp) => (
+                        <button
+                          key={stamp}
+                          onClick={() => {
+                            playConsoleBeep('relay');
+                            if (stamp === "CLEAR") {
+                              setAnnotationText("");
+                            } else {
+                              setAnnotationText((prev) => prev ? `${prev} - ${stamp}`.substring(0, 24) : stamp);
+                            }
+                          }}
+                          className="bg-[#1e2330] hover:bg-[#2b3145] text-slate-300 font-mono text-[8px] font-bold px-2 py-1 rounded border border-white/5 transition-colors uppercase"
+                        >
+                          {stamp}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ZONE C: Backlit Push Controls & Ergonomic Optoelectronic Trackball */}
+              <div className="col-span-12 md:col-span-6 lg:col-span-3 bg-[#0d0f14] p-4 rounded-2xl border border-white/5 flex flex-col justify-between gap-5">
+                
+                {/* Physical Action Swells */}
+                <div>
+                  <h4 className="text-[9.5px] font-mono tracking-wider text-slate-300 font-bold uppercase mb-3 flex items-center gap-1.5">
+                    <Activity size={12} className="text-[#00d1ff]" />
+                    Tactile Backlit Keys
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    
+                    {/* iSCAN AUTO-OPTIMIZE Key */}
+                    <button
+                      id="iscan-optimize-button"
+                      onClick={() => {
+                        runAutoOptimization();
+                      }}
+                      disabled={isAutoOptimizing}
+                      className={`relative overflow-hidden flex items-center justify-between px-3 py-3 rounded-xl border font-mono text-[10px] font-bold uppercase transition-all duration-300 shadow-md ${
+                        isAutoOptimizing
+                          ? "bg-[#00d1ff]/10 text-[#00d1ff] border-[#00d1ff] animate-pulse"
+                          : "bg-[#1c2c36] text-[#00d1ff] border-[#00d1ff]/30 hover:border-[#00d1ff] hover:bg-[#203c4f]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles size={11} className={isAutoOptimizing ? "animate-spin" : ""} />
+                        {isAutoOptimizing ? "[iSCAN TUNING]" : "⚡ [iSCAN AUTO-OPT]"}
+                      </span>
+                      <span className="text-[7px] uppercase bg-[#00d1ff]/10 px-1 py-0.5 rounded border border-[#00d1ff]/20">Active Tuning</span>
+                    </button>
+
+                    {/* FREEZE Key */}
+                    <button
+                      id="freeze-button"
+                      onClick={() => {
+                        playConsoleBeep('snap');
+                        setIsFrozen(!isFrozen);
+                      }}
+                      className={`relative overflow-hidden flex items-center justify-between px-3 py-3 rounded-xl border font-mono text-[10px] font-bold uppercase transition-all duration-300 shadow-md ${
+                        isFrozen 
+                          ? "bg-rose-500/20 text-rose-400 border-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.3)]" 
+                          : "bg-[#1c2130] text-cyan-400 border-[#2d3139] hover:border-cyan-500/50"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isFrozen ? "bg-rose-500 animate-ping" : "bg-cyan-500"}`} />
+                        {isFrozen ? "[UNFREEZE]" : "❄️ [FREEZE ACQ]"}
+                      </span>
+                      <span>ICE BLUE-GLOW</span>
+                    </button>
+
+                    {/* PRESET RESET Key */}
+                    <button
+                      id="reset-preset-button"
+                      onClick={() => {
+                        resetToPreset();
+                      }}
+                      className="relative overflow-hidden flex items-center justify-between px-3 py-3 rounded-xl bg-[#1c2130] text-emerald-400 border border-[#2d3139] hover:border-emerald-500/50 font-mono text-[10px] font-bold uppercase transition-all duration-300"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        ♻️ [Preset Reset]
+                      </span>
+                      <span>EMERALD FLASH</span>
+                    </button>
+
+                  </div>
+                </div>
+
+                {/* Ergonomic tracked mechanical trackball hub */}
+                <div className="flex-1 flex flex-col justify-end">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9.5px] font-mono text-slate-300 font-bold uppercase">
+                      Optoelectronic Trackball
+                    </span>
+                    <span className="text-[7.5px] font-mono text-cyan-400">
+                      NAVIGATOR ACTIVE
+                    </span>
+                  </div>
+
+                  {/* Physical Trackball Plate element */}
+                  <div 
+                    onMouseMove={handleTrackballMove}
+                    onTouchMove={handleTrackballMove}
+                    className="relative w-full h-32 rounded-full bg-[#1b1e26] border-4 border-[#2e3440] shadow-inner flex items-center justify-center cursor-crosshair group overflow-hidden"
+                  >
+                    {/* Ring markings representing outer orbit ring */}
+                    <div className="absolute inset-4 rounded-full border border-dashed border-white/5 pointer-events-none" />
+                    
+                    {/* Floating mechanical sphere */}
+                    <div 
+                      className="absolute w-14 h-14 rounded-full bg-gradient-to-br from-[#d8dee9] to-[#4c566a] shadow-lg border-2 border-slate-300 transition-transform duration-75 pointer-events-none flex items-center justify-center text-slate-800 text-[8px] font-bold"
+                      style={{
+                        transform: `translate(${(trackballPos.x - 50) * 0.4}px, ${(trackballPos.y - 50) * 0.4}px)`,
+                      }}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center" />
+                    </div>
+
+                    {/* Visual coordinates tracking line */}
+                    <div className="absolute bottom-2 inset-x-0 text-center font-mono text-[8px] text-cyan-400/90 pointer-events-none select-none">
+                      X: {trackballPos.x.toFixed(1)} | Y: {trackballPos.y.toFixed(1)}
+                    </div>
+                  </div>
+                  
+                  <p className="text-[7.5px] text-[#8e9299] text-center uppercase font-mono mt-2 leading-tight">
+                    Hover-drag mouse/finger across trackball to pilot beam sweep sector offsets!
+                  </p>
+                </div>
+
+              </div>
+
             </div>
 
           </div>

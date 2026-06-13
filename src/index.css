@@ -1,23 +1,73 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Playfair+Display:ital,wght@1,700&display=swap');
 @import "tailwindcss";
 
+:root {
+  --bg-color: #0c0d10;
+  --card-color: #16181d;
+  --border-color: #2d3139;
+  --primary-color: #00d1ff;
+  --accent-color: #ffb800;
+  --text-color: #e0e0e0;
+  --text-dim-color: #8e9299;
+  
+  --backing-layer: #34373e;
+  --crystal-layer: #ffd700;
+  --match-layer: #40e0d0;
+  --backing-stripe: #1a1c22;
+  --backing-stripe-alt: #24272e;
+  
+  /* Rotary Knob Vars */
+  --knob-base-track: rgba(255, 255, 255, 0.05);
+  --knob-bg-from: #16181d;
+  --knob-bg-to: #252831;
+  --knob-border: #3c414d;
+  --knob-pointer: rgba(255, 255, 255, 0.9);
+  --knob-center-cap: rgba(0, 0, 0, 0.4);
+  --knob-center-border: #4a4f5c;
+}
+
+:root.daylight {
+  --bg-color: #f3f4f6;
+  --card-color: #ffffff;
+  --border-color: #d1d5db;
+  --primary-color: #0ea5e9;
+  --accent-color: #d97706;
+  --text-color: #111827;
+  --text-dim-color: #4b5563;
+  
+  --backing-layer: #e5e7eb;
+  --crystal-layer: #eab308;
+  --match-layer: #06b6d4;
+  --backing-stripe: #e5e7eb;
+  --backing-stripe-alt: #d1d5db;
+  
+  /* Rotary Knob Vars */
+  --knob-base-track: rgba(0, 0, 0, 0.1);
+  --knob-bg-from: #f9fafb;
+  --knob-bg-to: #e5e7eb;
+  --knob-border: #cbd5e1;
+  --knob-pointer: #0ea5e9;
+  --knob-center-cap: rgba(255, 255, 255, 0.6);
+  --knob-center-border: #cbd5e1;
+}
+
 @theme {
   --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --font-serif: "Playfair Display", serif;
 
-  --color-bg: #0c0d10;
-  --color-card: #16181d;
-  --color-border: #2d3139;
-  --color-primary: #00d1ff;
-  --color-accent: #ffb800;
-  --color-text: #e0e0e0;
-  --color-text-dim: #8e9299;
+  --color-bg: var(--bg-color);
+  --color-card: var(--card-color);
+  --color-border: var(--border-color);
+  --color-primary: var(--primary-color);
+  --color-accent: var(--accent-color);
+  --color-text: var(--text-color);
+  --color-text-dim: var(--text-dim-color);
   
   /* Component Layers */
-  --color-backing-layer: #34373e;
-  --color-crystal-layer: #ffd700;
-  --color-match-layer: #40e0d0;
+  --color-backing-layer: var(--backing-layer);
+  --color-crystal-layer: var(--crystal-layer);
+  --color-match-layer: var(--match-layer);
 }
 
 @layer base {
@@ -26,6 +76,651 @@
     color: var(--color-text);
     @apply font-sans antialiased;
   }
+}
+
+/* --- Daylight Theme Custom Overrides --- */
+.daylight {
+  color-scheme: light;
+}
+
+/* Force standard dark inputs, panels, backgrounds, and custom cards to render elegantly in light mode */
+.daylight .bg-\[\#0c0d10\],
+.daylight .bg-\[\#0a0b0d\],
+.daylight .bg-\[\#0b0c0f\],
+.daylight .bg-\[\#0b0c10\],
+.daylight .bg-\[\#07080a\],
+.daylight .bg-\[\#090a0f\],
+.daylight .bg-\[\#08090d\],
+.daylight .bg-\[\#0e1013\],
+.daylight .bg-\[\#0d0f14\],
+.daylight .bg-\[\#111215\],
+.daylight .bg-\[\#0e0f12\],
+.daylight .bg-\[\#0c0d10\]\/95,
+.daylight .bg-\[\#0c0d10\]\/90,
+.daylight .bg-\[\#0c0d10\]\/85,
+.daylight .bg-\[\#0c0d10\]\/80,
+.daylight .bg-black {
+  background-color: #f3f4f6 !important;
+}
+
+/* Translucent dark/black container classes in daylight theme mapped to high-contrast paper/glassmorphism styles */
+.daylight .bg-black\/5 {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+.daylight .bg-black\/10 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.daylight .bg-black\/15,
+.daylight .bg-black\/20,
+.daylight .bg-black\/25,
+.daylight .bg-black\/30,
+.daylight .bg-black\/35,
+.daylight .bg-black\/40,
+.daylight .bg-black\/45,
+.daylight .bg-black\/50,
+.daylight .bg-black\/55,
+.daylight .bg-black\/60,
+.daylight .bg-black\/65,
+.daylight .bg-black\/70,
+.daylight .bg-black\/75,
+.daylight .bg-black\/80,
+.daylight .bg-black\/90,
+.daylight .bg-black\/95 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(12px) !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Map standard translucent white backgrounds (like buttons) to high-contrast dark-tint buttons in daylight */
+.daylight .bg-white\/5,
+.daylight .bg-white\/10,
+.daylight .bg-white\/12,
+.daylight .bg-white\/15,
+.daylight .bg-white\/20,
+.daylight .bg-white\/25,
+.daylight .bg-white\/30,
+.daylight .bg-white\/35 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.daylight .bg-white\/5 *,
+.daylight .bg-white\/10 *,
+.daylight .bg-white\/12 *,
+.daylight .bg-white\/15 *,
+.daylight .bg-white\/20 *,
+.daylight .bg-white\/25 *,
+.daylight .bg-white\/30 *,
+.daylight .bg-white\/35 * {
+  color: #111827 !important;
+}
+
+.daylight .bg-\[\#16181d\],
+.daylight .bg-\[\#14161d\],
+.daylight .bg-\[\#13161c\],
+.daylight .bg-\[\#11131a\],
+.daylight .bg-\[\#0f1115\],
+.daylight .bg-\[\#15171e\],
+.daylight .bg-\[\#12141c\],
+.daylight .bg-\[\#12141c\]\/90,
+.daylight .bg-\[\#111317\],
+.daylight .bg-\[\#181a20\],
+.daylight .bg-\[\#191b22\],
+.daylight .bg-\[\#12141a\],
+.daylight .bg-\[\#101216\],
+.daylight .bg-\[\#14161c\],
+.daylight .bg-\[\#0e1014\],
+.daylight .bg-\[\#151922\],
+.daylight .bg-\[\#1c2130\],
+.daylight .bg-\[\#141820\],
+.daylight .bg-\[\#1c222b\],
+.daylight .bg-\[\#08090d\],
+.daylight .bg-\[\#101319\],
+.daylight .bg-\[\#0c0e12\],
+.daylight .bg-\[\#12151b\],
+.daylight .bg-\[\#0e0f12\],
+.daylight .bg-\[\#1e2029\],
+.daylight .bg-\[\#1a1e24\],
+.daylight .bg-\[\#0a0c0f\],
+.daylight .bg-\[\#050608\],
+.daylight .bg-\[\#07080b\],
+.daylight .bg-\[\#090914\],
+.daylight .bg-\[\#10121a\],
+.daylight .bg-\[\#1a1c22\],
+.daylight .bg-\[\#0a0b0e\],
+.daylight .bg-\[\#14151a\],
+.daylight .bg-\[\#22242a\],
+.daylight .bg-\[\#1c1d22\],
+.daylight .bg-\[\#0a0a0f\],
+.daylight .bg-\[\#030304\],
+.daylight .bg-\[\#101115\],
+.daylight .bg-\[\#08080a\],
+.daylight .bg-\[\#1c1f26\],
+.daylight .bg-\[\#0a0c10\],
+.daylight .bg-\[\#0a0c10\]\/80,
+.daylight .bg-\[\#0a0c10\]\/70,
+.daylight .bg-\[\#0a0c10\]\/90,
+.daylight .bg-\[\#141519\],
+.daylight .bg-\[\#141519\]\/80,
+.daylight .bg-\[\#141519\]\/70,
+.daylight .bg-\[\#141519\]\/50,
+.daylight .bg-\[\#14161a\],
+.daylight .bg-\[\#14161a\]\/90,
+.daylight .bg-\[\#14161a\]\/80,
+.daylight .bg-\[\#111317\],
+.daylight .bg-\[\#16181d\]\/95,
+.daylight .bg-\[\#16181d\]\/90,
+.daylight .bg-\[\#16181d\]\/85,
+.daylight .bg-\[\#16181d\]\/80,
+.daylight .bg-\[\#16181d\]\/60,
+.daylight .bg-\[\#16181d\]\/50,
+.daylight .bg-\[\#16181d\]\/40,
+.daylight .bg-\[\#16181d\]\/30,
+.daylight .bg-\[\#14161d\]\/95,
+.daylight .bg-\[\#14161d\]\/90,
+.daylight .bg-\[\#14161d\]\/80,
+.daylight .bg-\[\#14161d\]\/50,
+.daylight .bg-\[\#0c0d10\]\/95,
+.daylight .bg-\[\#0c0d10\]\/90,
+.daylight .bg-\[\#0c0d10\]\/85,
+.daylight .bg-\[\#0c0d10\]\/80,
+.daylight .bg-\[\#0c0d10\]\/50,
+.daylight .bg-\[\#0c0d10\]\/30,
+.daylight .bg-\[\#0b0c10\]\/90,
+.daylight .bg-\[\#0b0c10\]\/40,
+.daylight .bg-\[\#0f1115\]\/95,
+.daylight .bg-\[\#0f1115\]\/50,
+.daylight .bg-\[\#12141c\]\/90,
+.daylight .bg-\[\#111317\]\/85,
+.daylight .bg-\[\#16181f\]\/70,
+.daylight .bg-\[\#0a0b0d\]\/50,
+.daylight .bg-\[\#0d0d12\]\/60,
+.daylight .bg-\[\#101217\]\/60,
+.daylight .bg-\[\#10121a\]\/80,
+.daylight .bg-\[\#1b1c24\]\/80,
+.daylight .bg-\[\#1a1c22\]\/80,
+.daylight .bg-\[\#1a1c22\]\/50,
+.daylight .bg-\[\#030308\]\/90,
+.daylight .bg-zinc-900,
+.daylight .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+/* General text opacity boost for maximum daylight visibility on descriptive labels */
+.daylight span.opacity-40,
+.daylight span.opacity-50,
+.daylight span.opacity-30,
+.daylight span.opacity-25,
+.daylight span.opacity-20,
+.daylight div.opacity-40,
+.daylight div.opacity-50,
+.daylight div.opacity-30,
+.daylight div.opacity-25,
+.daylight div.opacity-20,
+.daylight p.opacity-40,
+.daylight p.opacity-50,
+.daylight p.opacity-30,
+.daylight p.opacity-25,
+.daylight p.opacity-20 {
+  opacity: 0.92 !important;
+}
+
+/* Ensure text elements have high contrast */
+.daylight .text-white,
+.daylight .text-\[\#e0e0e0\],
+.daylight .text-\[\#f0f0f0\],
+.daylight .text-slate-100,
+.daylight .text-slate-200,
+.daylight .text-slate-300,
+.daylight .text-zinc-100,
+.daylight .text-zinc-200,
+.daylight .text-zinc-300,
+.daylight .text-gray-100,
+.daylight .text-gray-200,
+.daylight .text-gray-300,
+.daylight .text-neutral-100,
+.daylight .text-neutral-200,
+.daylight .text-neutral-300,
+.daylight h1:not(.text-\[\#00d1ff\]),
+.daylight h2:not(.text-\[\#00d1ff\]),
+.daylight h3:not(.text-cyan-400),
+.daylight h4:not(.text-cyan-400),
+.daylight h5,
+.daylight h6 {
+  color: #111827 !important;
+}
+
+/* Handle opacity text-white overrides so they do not render invisible white-on-white */
+.daylight .text-white\/100,
+.daylight .text-white\/95,
+.daylight .text-white\/90,
+.daylight .text-white\/85,
+.daylight .text-white\/80 {
+  color: #111827 !important;
+}
+
+.daylight .text-white\/75,
+.daylight .text-white\/70,
+.daylight .text-white\/65,
+.daylight .text-white\/60,
+.daylight .text-white\/55,
+.daylight .text-white\/50,
+.daylight .text-white\/45,
+.daylight .text-white\/40 {
+  color: #111827 !important;
+}
+
+.daylight .text-white\/35,
+.daylight .text-white\/30,
+.daylight .text-white\/25,
+.daylight .text-white\/20,
+.daylight .text-white\/15,
+.daylight .text-white\/10 {
+  color: #1f2937 !important;
+}
+
+/* Override standard dim/subtitle text classes to have excellent contrast in light mode */
+.daylight .text-\[\#8e9299\],
+.daylight .text-zinc-400,
+.daylight .text-slate-400,
+.daylight .text-gray-400,
+.daylight .text-neutral-400,
+.daylight .text-slate-500,
+.daylight .text-zinc-500,
+.daylight .text-gray-500,
+.daylight .text-neutral-500,
+.daylight .text-\[\#8e9299\]\/85 {
+  color: #1f2937 !important;
+}
+
+/* Custom top bar, sidebar, and bottom readout container overrides in daylight */
+.daylight .absolute.top-0.inset-x-0.h-10 {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  opacity: 1 !important;
+}
+
+.daylight .hud-sidebar-panel {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+
+.daylight .hud-bottom-panel {
+  opacity: 1 !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Translate neon cyber-cyan, amber, green, rose, and purple color highlights to deep, highly-legible tones in daylight mode */
+.daylight .text-\[\#00d1ff\],
+.daylight .text-cyan-400,
+.daylight .text-cyan-500 {
+  color: #0284c7 !important;
+}
+.daylight .text-\[\#ffd700\],
+.daylight .text-amber-400,
+.daylight .text-amber-500,
+.daylight .text-yellow-500 {
+  color: #b45309 !important;
+}
+.daylight .text-emerald-400,
+.daylight .text-emerald-500,
+.daylight .text-green-400,
+.daylight .text-green-500 {
+  color: #047857 !important;
+}
+.daylight .text-rose-400,
+.daylight .text-rose-500,
+.daylight .text-red-400,
+.daylight .text-red-500 {
+  color: #be123c !important;
+}
+.daylight .text-purple-400,
+.daylight .text-purple-500 {
+  color: #7e22ce !important;
+}
+.daylight .bg-\[\#00d1ff\]\/10,
+.daylight .bg-\[\#00d1ff\]\/5,
+.daylight .bg-\[\#00d1ff\]\/15,
+.daylight .bg-\[\#00d1ff\]\/20,
+.daylight .bg-cyan-500\/5,
+.daylight .bg-cyan-500\/10,
+.daylight .bg-cyan-500\/15,
+.daylight .bg-cyan-500\/20,
+.daylight .bg-\[\#ffd700\]\/10,
+.daylight .bg-\[\#ffd700\]\/5 {
+  background-color: rgba(14, 165, 233, 0.08) !important;
+}
+.daylight .border-\[\#00d1ff\]\/20,
+.daylight .border-\[\#00d1ff\]\/25,
+.daylight .border-\[\#00d1ff\]\/30,
+.daylight .border-\[\#00d1ff\]\/40,
+.daylight .border-\[\#00d1ff\]\/50,
+.daylight .border-cyan-500\/20,
+.daylight .border-cyan-500\/25,
+.daylight .border-cyan-500\/30,
+.daylight .border-[#00d1ff]/30,
+.daylight .border-\[\#ffd700\]\/30 {
+  border-color: rgba(14, 165, 233, 0.25) !important;
+}
+
+/* Map white hover selectors on light elements to behave as a standard dark overlay hover state */
+.daylight .hover\:bg-white\/5:hover,
+.daylight .hover\:bg-white\/10:hover,
+.daylight .hover\:bg-white\/15:hover,
+.daylight .hover\:bg-white\/20:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Beautiful clinical daylight alerts for custom warn/error cards (amber/rose) */
+.daylight .bg-\[\#1c1813\] {
+  background-color: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+.daylight .bg-\[\#1c1813\] *,
+.daylight .bg-\[\#1c1813\] span,
+.daylight .bg-\[\#1c1813\] p,
+.daylight .bg-\[\#1c1813\] div {
+  color: #92400e !important;
+}
+
+.daylight .bg-\[\#1c1416\]\/50,
+.daylight .bg-\[\#1c1416\] {
+  background-color: #fee2e2 !important;
+  border-color: #f87171 !important;
+}
+.daylight .bg-\[\#1c1416\]\/50 *,
+.daylight .bg-\[\#1c1416\] *,
+.daylight .bg-\[\#1c1416\]\/50 span,
+.daylight .bg-\[\#1c1416\] span,
+.daylight .bg-\[\#1c1416\] p,
+.daylight .bg-\[\#1c1416\] div {
+  color: #991b1b !important;
+}
+
+/* Specific styling for standard amber, emerald, and red alert tags with opacity */
+.daylight .bg-emerald-500\/5,
+.daylight .bg-emerald-500\/10,
+.daylight .bg-emerald-500\/15 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+.daylight .bg-emerald-500\/5 span,
+.daylight .bg-emerald-500\/10 span,
+.daylight .bg-emerald-500\/15 span,
+.daylight .bg-emerald-500\/5 strong,
+.daylight .bg-emerald-500\/10 strong,
+.daylight .bg-emerald-500\/15 strong {
+  color: #047857 !important;
+}
+
+.daylight .bg-amber-500\/10,
+.daylight .bg-amber-500\/5,
+.daylight .bg-amber-500\/15,
+.daylight .bg-[#ffd700]\/5,
+.daylight .bg-[#ffd700]\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+}
+.daylight .bg-amber-500\/10 *,
+.daylight .bg-amber-500\/5 *,
+.daylight .bg-amber-500\/15 *,
+.daylight .bg-[#ffd700]\/5 *,
+.daylight .bg-[#ffd700]\/10 * {
+  color: #b45309 !important;
+}
+
+.daylight .bg-red-500\/10,
+.daylight .bg-red-500\/15,
+.daylight .bg-rose-500\/10,
+.daylight .bg-rose-500\/15 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+.daylight .bg-red-500\/10 *,
+.daylight .bg-red-500\/15 *,
+.daylight .bg-rose-500\/10 *,
+.daylight .bg-rose-500\/15 * {
+  color: #be123c !important;
+}
+
+/* Standard border color adjustments */
+.daylight .border-\[\#2d3139\],
+.daylight .border-white\/5,
+.daylight .border-white\/10,
+.daylight .border-white\/15,
+.daylight .border-white\/20,
+.daylight .border-zinc-800,
+.daylight .border-slate-800,
+.daylight .border-\[\#2d3139\]\/80,
+.daylight .border-\[\#2d3139\]\/40,
+.daylight .border-\[\#2d3139\]\/50,
+.daylight .border-\[\#2d3139\]\/70,
+.daylight .border-\[\#232731\],
+.daylight .border-\[\#232731\]\/80,
+.daylight .border-\[\#232731\]\/50 {
+  border-color: #d1d5db !important;
+}
+
+/* Quick styles for text inputs/textareas to prevent white text on white backgrounds */
+.daylight input,
+.daylight textarea,
+.daylight select {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+.daylight input::placeholder,
+.daylight textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Override tech HUD dots/grids to keep them visible but light */
+.daylight.hud-dots,
+.daylight .hud-dots {
+  background-image: radial-gradient(rgba(0,0,0,0.06) 1.5px, transparent 1.5px) !important;
+  background-size: 20px 20px !important;
+}
+
+.daylight.hud-grid,
+.daylight .hud-grid {
+  background-image: 
+    linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px) !important;
+  background-size: 40px 40px !important;
+}
+
+/* Fix tab/nav list containers */
+.daylight .bg-\[\#0c0d10\]\/90 {
+  background-color: #e5e7eb !important;
+}
+
+/* --- Detailed SVG, Icon, and Hover Refinements for daylight theme --- */
+
+/* Globally prevent text elements from shifting to white on hover in daylight theme */
+.daylight :hover,
+.daylight *:hover {
+  text-shadow: none !important;
+}
+.daylight .hover\:text-white:hover,
+.daylight [class*="hover:text-white"]:hover,
+.daylight [class*="hover:text-zinc-100"]:hover,
+.daylight [class*="hover:text-slate-100"]:hover,
+.daylight [class*="hover:text-gray-100"]:hover,
+.daylight [class*="group-hover:text-white"]:hover,
+.daylight .group:hover .group-hover\:text-white {
+  color: #111827 !important;
+}
+
+/* Ensure Lucide Icons under daylight theme have gorgeous high contrast */
+.daylight svg.lucide,
+.daylight .lucide {
+  color: #111827;
+}
+
+/* Maintain proper diagnostic highlight coloring for custom icons */
+.daylight svg.lucide.text-\[\#00d1ff\],
+.daylight svg.lucide.text-cyan-400,
+.daylight svg.lucide.text-cyan-500,
+.daylight svg.lucide.text-cyan-600,
+.daylight .lucide.text-\[\#00d1ff\] {
+  color: #0284c7 !important;
+}
+
+.daylight svg.lucide.text-\[\#ffd700\],
+.daylight svg.lucide.text-amber-400,
+.daylight svg.lucide.text-amber-500,
+.daylight svg.lucide.text-yellow-500,
+.daylight .lucide.text-\[\#ffd700\] {
+  color: #b45309 !important;
+}
+
+.daylight svg.lucide.text-rose-400,
+.daylight svg.lucide.text-rose-500,
+.daylight svg.lucide.text-red-400,
+.daylight svg.lucide.text-red-500 {
+  color: #be123c !important;
+}
+
+.daylight svg.lucide.text-emerald-400,
+.daylight svg.lucide.text-emerald-500,
+.daylight svg.lucide.text-green-400,
+.daylight svg.lucide.text-green-500 {
+  color: #047857 !important;
+}
+
+/* Inline SVG path/stroke translations for graphs, dials, and safety gauges */
+.daylight svg path[stroke="#00d1ff"],
+.daylight svg line[stroke="#00d1ff"],
+.daylight svg circle[stroke="#00d1ff"],
+.daylight svg rect[stroke="#00d1ff"],
+.daylight svg [stroke="#00d1ff"] {
+  stroke: #0284c7 !important;
+}
+
+.daylight svg path[fill="#00d1ff"],
+.daylight svg circle[fill="#00d1ff"],
+.daylight svg rect[fill="#00d1ff"],
+.daylight svg [fill="#00d1ff"] {
+  fill: #0284c7 !important;
+}
+
+.daylight svg path[stroke="#ffd700"],
+.daylight svg line[stroke="#ffd700"],
+.daylight svg [stroke="#ffd700"] {
+  stroke: #b45309 !important;
+}
+
+.daylight svg path[fill="#ffd700"],
+.daylight svg circle[fill="#ffd700"],
+.daylight svg rect[fill="#ffd700"],
+.daylight svg [fill="#ffd700"] {
+  fill: #b45309 !important;
+}
+
+.daylight svg [stroke="#ff9f1c"] {
+  stroke: #d97706 !important;
+}
+.daylight svg [fill="#ff9f1c"] {
+  fill: #d97706 !important;
+}
+
+.daylight svg [stroke="#34d399"] {
+  stroke: #047857 !important;
+}
+.daylight svg [fill="#34d399"] {
+  fill: #047857 !important;
+}
+
+.daylight svg [stroke="#ff4d4d"] {
+  stroke: #be123c !important;
+}
+.daylight svg [fill="#ff4d4d"] {
+  fill: #be123c !important;
+}
+
+/* Translucent layer line corrections */
+.daylight svg line[stroke="#ffffff"],
+.daylight svg line[stroke="#e0e0e0"],
+.daylight svg path[stroke="#ffffff"],
+.daylight svg path[stroke="#e0e0e0"],
+.daylight svg [stroke="#ffffff"],
+.daylight svg [stroke="#e0e0e0"] {
+  stroke: #1f2937 !important;
+}
+
+.daylight svg circle[fill="#ffffff"],
+.daylight svg path[fill="#ffffff"] {
+  fill: #1f2937 !important;
+}
+
+/* Beautiful clinical color card tints inside vector SVGs for daylight mode */
+.daylight svg [fill="#1b1214"] {
+  fill: #fee2e2 !important; /* light rose tint for warnings */
+}
+
+.daylight svg [fill="#121b18"] {
+  fill: #d1fae5 !important; /* light green tint for safety metrics */
+}
+
+.daylight svg [fill="#1e1b12"] {
+  fill: #fef3c7 !important; /* light amber alert banner */
+}
+
+/* Standard SVG container background-colors switched from solid deep dark to pure paper-white */
+.daylight svg [fill="#11131a"],
+.daylight svg [fill="#090a0f"],
+.daylight svg [fill="#0a0506"],
+.daylight svg [fill="#050a07"],
+.daylight svg rect[fill="#11131a"],
+.daylight svg rect[fill="#090a0f"] {
+  fill: #ffffff !important;
+}
+
+/* SVGs containing custom text labels filled with dim/white colors mapped to deep dark slate for high legibility */
+.daylight svg text[fill="#ffffff"],
+.daylight svg text[fill="#e0e0e0"],
+.daylight svg text[fill="#f0f0f0"],
+.daylight svg text[fill="#8e9299"],
+.daylight svg text {
+  fill: #111827 !important;
+}
+
+/* Convert glowing diagnostic dark canvases to gorgeous high-contrast printouts in daylight theme clickably */
+.daylight canvas {
+  filter: invert(0.92) hue-rotate(180deg) brightness(1.05) contrast(1.15) !important;
+  border-color: #cbd5e1 !important;
+}
+
+.daylight svg text[fill="#00d1ff"] {
+  fill: #0284c7 !important;
+}
+.daylight svg text[fill="#ffd700"] {
+  fill: #b45309 !important;
+}
+.daylight svg text[fill="#ff9f1c"] {
+  fill: #d97706 !important;
+}
+.daylight svg text[fill="#ff4d4d"] {
+  fill: #be123c !important;
+}
+.daylight svg text[fill="#34d399"] {
+  fill: #047857 !important;
+}
+
+/* Align remaining border rules for absolute completeness */
+.daylight .border-zinc-700,
+.daylight .border-slate-700,
+.daylight .border-neutral-800,
+.daylight .border-gray-800,
+.daylight .border-zinc-900,
+.daylight .border-neutral-900 {
+  border-color: #cbd5e1 !important;
 }
 
 .serif-italic {
@@ -93,5 +788,270 @@
     flex-shrink: 0 !important;
     min-height: min-content !important;
     overflow-y: visible !important;
+  }
+}
+
+/* --- Bulletproof Daylight Contrast Attribute Overrides --- */
+.daylight .bg-\[\#12141a\],
+.daylight [class*="bg-[#12141a]"],
+.daylight .bg-\[\#07080b\],
+.daylight [class*="bg-[#07080b]"],
+.daylight .bg-\[\#13161c\],
+.daylight [class*="bg-[#13161c]"],
+.daylight .bg-\[\#121c24\],
+.daylight [class*="bg-[#121c24]"],
+.daylight .bg-\[\#030308\],
+.daylight [class*="bg-[#030308]"],
+.daylight .bg-\[\#111216\],
+.daylight [class*="bg-[#111216]"],
+.daylight .bg-\[\#08090c\],
+.daylight [class*="bg-[#08090c]"],
+.daylight .bg-\[\#0e1014\],
+.daylight [class*="bg-[#0e1014]"],
+.daylight .bg-\[\#0c0d12\],
+.daylight [class*="bg-[#0c0d12]"],
+.daylight .bg-\[\#060709\],
+.daylight [class*="bg-[#060709]"],
+.daylight .bg-\[\#101217\],
+.daylight [class*="bg-[#101217]"],
+.daylight .bg-\[\#101115\],
+.daylight [class*="bg-[#101115]"],
+.daylight .bg-\[\#14151a\],
+.daylight [class*="bg-[#14151a]"],
+.daylight .bg-\[\#22242a\],
+.daylight [class*="bg-[#22242a]"],
+.daylight .bg-\[\#030304\],
+.daylight [class*="bg-[#030304]"],
+.daylight .bg-\[\#08080a\],
+.daylight [class*="bg-[#08080a]"],
+.daylight .bg-\[\#181a1f\],
+.daylight [class*="bg-[#181a1f]"],
+.daylight .bg-\[\#050608\],
+.daylight [class*="bg-[#050608]"],
+.daylight .bg-\[\#151922\],
+.daylight [class*="bg-[#151922]"],
+.daylight .bg-\[\#181d24\],
+.daylight [class*="bg-[#181d24]"],
+.daylight .bg-\[\#1e2330\],
+.daylight [class*="bg-[#1e2330]"],
+.daylight .bg-\[\#2b3145\],
+.daylight [class*="bg-[#2b3145]"],
+.daylight .bg-\[\#1c2c36\],
+.daylight [class*="bg-[#1c2c36]"],
+.daylight .bg-\[\#1c2130\],
+.daylight [class*="bg-[#1c2130]"],
+.daylight .bg-\[\#1b1e26\],
+.daylight [class*="bg-[#1b1e26]"],
+.daylight .bg-\[\#181b24\],
+.daylight [class*="bg-[#181b24]"],
+.daylight .bg-\[\#171a22\],
+.daylight [class*="bg-[#171a22]"],
+.daylight .bg-\[\#101216\],
+.daylight [class*="bg-[#101216]"],
+.daylight .bg-\[\#14161c\],
+.daylight [class*="bg-[#14161c]"],
+.daylight .bg-\[\#090b0e\],
+.daylight [class*="bg-[#090b0e]"],
+.daylight .bg-\[\#121317\],
+.daylight [class*="bg-[#121317]"],
+.daylight .bg-\[\#1c1d24\],
+.daylight [class*="bg-[#1c1d24]"],
+.daylight .bg-\[\#0c0d11\],
+.daylight [class*="bg-[#0c0d11]"],
+.daylight .bg-\[\#121319\],
+.daylight [class*="bg-[#121319]"],
+.daylight .bg-\[\#111318\],
+.daylight [class*="bg-[#111318]"],
+.daylight .bg-\[\#0e1013\],
+.daylight [class*="bg-[#0e1013]"],
+.daylight .bg-\[\#181a20\],
+.daylight [class*="bg-[#181a20]"],
+.daylight .bg-\[\#1c1416\],
+.daylight [class*="bg-[#1c1416]"],
+.daylight .bg-\[\#0e0f12\],
+.daylight [class*="bg-[#0e0f12]"],
+.daylight .bg-\[\#191b22\],
+.daylight [class*="bg-[#191b22]"],
+.daylight .bg-\[\#1c1813\],
+.daylight [class*="bg-[#1c1813]"],
+.daylight .bg-\[\#1c1f26\],
+.daylight [class*="bg-[#1c1f26]"],
+.daylight .bg-\[\#151515\],
+.daylight [class*="bg-[#151515]"],
+.daylight .bg-\[\#121217\],
+.daylight [class*="bg-[#121217]"],
+.daylight .bg-\[\#1b1c24\],
+.daylight [class*="bg-[#1b1c24]"],
+.daylight .bg-\[\#0d1117\],
+.daylight [class*="bg-[#0d1117]"],
+.daylight .bg-\[\#0d0d12\],
+.daylight [class*="bg-[#0d0d12]"],
+.daylight .bg-\[\#1c1e24\],
+.daylight [class*="bg-[#1c1e24]"],
+.daylight .bg-\[\#1b1e25\],
+.daylight [class*="bg-[#1b1e25]"],
+.daylight .bg-\[\#11131a\],
+.daylight [class*="bg-[#11131a]"],
+.daylight .bg-\[\#0d0e12\],
+.daylight [class*="bg-[#0d0e12]"],
+.daylight .bg-\[\#1a1d26\],
+.daylight [class*="bg-[#1a1d26]"] {
+  background-color: #f3f4f6 !important;
+  border-color: #cbd5e1 !important;
+}
+
+
+.daylight [class*="bg-[#0a0c10]"],
+.daylight [class*="bg-[#0a0b0d]"],
+.daylight [class*="bg-[#0b0c0f]"],
+.daylight [class*="bg-[#0b0c10]"],
+.daylight [class*="bg-[#07080a]"],
+.daylight [class*="bg-[#090a0f]"],
+.daylight [class*="bg-[#08090d]"],
+.daylight [class*="bg-[#0c0d10]"],
+.daylight [class*="bg-[#0d0f14]"] {
+  background-color: #f3f4f6 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.daylight [class*="bg-[#141519]"],
+.daylight [class*="bg-[#14161a]"],
+.daylight [class*="bg-[#111317]"],
+.daylight [class*="bg-[#16181d]"],
+.daylight [class*="bg-[#14161d]"],
+.daylight [class*="bg-[#16181f]"],
+.daylight [class*="bg-[#1a1c22]"],
+.daylight [class*="bg-[#12141c]"],
+.daylight [class*="bg-[#111215]"],
+.daylight [class*="bg-[#0f1115]"],
+.daylight [class*="bg-[#1c1d22]"],
+.daylight [class*="bg-[#0a0a0f]"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Enhanced Borders for Daylight Mode */
+.daylight .border-white\/5,
+.daylight [class*="border-white/5"],
+.daylight .border-white\/10,
+.daylight [class*="border-white/10"],
+.daylight .border-\[\#2d3139\],
+.daylight [class*="border-[#2d3139]"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Upgrade SVG Icons in Daylight Theme */
+.daylight svg.lucide {
+  stroke-width: 2.5px !important;
+}
+
+/* Specific button, floating menu triggers, and panel overrides in daylight mode */
+.daylight #workspace-fullscreen-badge-btn,
+.daylight #physics-quick-ref-btn {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+.daylight #workspace-fullscreen-badge-btn span,
+.daylight #workspace-fullscreen-badge-btn svg,
+.daylight #physics-quick-ref-btn span,
+.daylight #physics-quick-ref-btn svg {
+  color: #1a1c22 !important;
+}
+
+.daylight #workspace-fullscreen-badge-btn:hover,
+.daylight #physics-quick-ref-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #0284c7 !important;
+}
+
+/* Map white transparency tags to standard dark-tint options to avoid white-on-white text */
+.daylight .bg-white\/5,
+.daylight .bg-white\/10,
+.daylight .bg-white\/12,
+.daylight .bg-white\/15,
+.daylight .bg-white\/20,
+.daylight .bg-white\/25,
+.daylight .bg-white\/30,
+.daylight .bg-white\/40,
+.daylight .bg-white\/50,
+.daylight [class*="bg-white/5"],
+.daylight [class*="bg-white/10"],
+.daylight [class*="bg-white/15"],
+.daylight [class*="bg-white/20"] {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.daylight .bg-white\/5 *,
+.daylight .bg-white\/10 *,
+.daylight .bg-white\/12 *,
+.daylight .bg-white\/15 *,
+.daylight .bg-white\/20 *,
+.daylight .bg-white\/25 *,
+.daylight .bg-white\/30 *,
+.daylight .bg-white\/40 *,
+.daylight .bg-white\/50 * {
+  color: #111827 !important;
+}
+
+/* Precision brand text-contrasting overrides */
+.daylight .text-\[\#00d1ff\],
+.daylight [class*="text-[#00d1ff]"] {
+  color: #0284c7 !important; /* Vivid accessible blue */
+}
+
+.daylight .text-\[\#ffd700\],
+.daylight [class*="text-[#ffd700]"] {
+  color: #c2410c !important; /* Vivid accessible amber-orange */
+}
+
+.daylight .text-emerald-400,
+.daylight [class*="text-emerald-400"] {
+  color: #047857 !important; /* Deep contrast warning green */
+}
+
+.daylight .text-red-400,
+.daylight [class*="text-red-400"] {
+  color: #b91c1c !important; /* Strong clear warning red */
+}
+
+/* Generalized Typography Overrides for Daylight */
+.daylight .text-white,
+.daylight [class*="text-white"],
+.daylight .text-\[\#e0e0e0\],
+.daylight [class*="text-[#e0e0e0]"],
+.daylight .text-gray-300,
+.daylight [class*="text-gray-300"],
+.daylight .text-gray-400,
+.daylight [class*="text-gray-400"] {
+  color: #0f172a !important; /* Dark slate */
+}
+
+.daylight .text-\[\#8e9299\],
+.daylight [class*="text-[#8e9299]"],
+.daylight .text-white\/70,
+.daylight [class*="text-white/70"],
+.daylight .text-white\/60,
+.daylight [class*="text-white/60"],
+.daylight .text-white\/50,
+.daylight [class*="text-white/50"],
+.daylight .text-white\/40,
+.daylight [class*="text-white/40"] {
+  color: #475569 !important; /* Medium slate */
+}
+
+.daylight .text-white\/30,
+.daylight [class*="text-white/30"],
+.daylight .text-white\/20,
+.daylight [class*="text-white/20"] {
+  color: #94a3b8 !important; /* Light slate */
+}
+
+@layer utilities {
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
   }
 }

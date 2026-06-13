@@ -44,12 +44,12 @@ function TouchSlider({
   colorClass = 'cyan'
 }: TouchSliderProps) {
   const colorMap = {
-    cyan: { text: 'text-[#00d1ff]', accent: 'accent-[#00d1ff]', track: 'border-[#00d1ff]/25 bg-[#00d1ff]/5' },
-    amber: { text: 'text-amber-400', accent: 'accent-amber-500', track: 'border-amber-500/25 bg-amber-500/5' },
-    rose: { text: 'text-rose-400', accent: 'accent-rose-500', track: 'border-rose-500/25 bg-rose-500/5' },
-    emerald: { text: 'text-emerald-400', accent: 'accent-emerald-500', track: 'border-emerald-500/25 bg-emerald-500/5' },
-    purple: { text: 'text-purple-400', accent: 'accent-purple-500', track: 'border-purple-500/25 bg-purple-500/5' },
-    white: { text: 'text-white', accent: 'accent-white', track: 'border-white/20 bg-white/5' }
+    cyan: { text: 'text-[#00d1ff]', accent: 'accent-[#00d1ff]', track: 'border-[#00d1ff]/15 bg-[#00d1ff]/5' },
+    amber: { text: 'text-amber-400', accent: 'accent-amber-500', track: 'border-amber-500/15 bg-amber-500/5' },
+    rose: { text: 'text-rose-400', accent: 'accent-rose-500', track: 'border-rose-500/15 bg-rose-500/5' },
+    emerald: { text: 'text-emerald-400', accent: 'accent-emerald-500', track: 'border-emerald-500/15 bg-emerald-500/5' },
+    purple: { text: 'text-purple-400', accent: 'accent-purple-500', track: 'border-purple-500/15 bg-purple-500/5' },
+    white: { text: 'text-white', accent: 'accent-white', track: 'border-white/10 bg-white/5' }
   }[colorClass];
 
   const handleDecrement = () => {
@@ -95,7 +95,7 @@ function TouchSlider({
             step={step}
             value={value}
             onChange={(e) => onChange(parseFloat(e.target.value))}
-            className={`w-full appearance-none h-1.5 rounded-full bg-black/40 border border-[#2d3139]/80 cursor-pointer ${colorMap.accent}`}
+            className={`w-full appearance-none h-1.5 rounded-full bg-black/50 border border-[#2d3139]/50 cursor-pointer ${colorMap.accent}`}
           />
         </div>
 
@@ -202,7 +202,7 @@ export default function SidebarControls({
           exit={{ opacity: 0, y: -5 }} 
           className="flex flex-col gap-4"
         >
-          <div className="text-[11px] uppercase tracking-widest text-[#00d1ff] font-bold border-b border-[#2d3139] pb-1.5 font-mono flex items-center gap-1.5">
+          <div className="text-[11px] uppercase tracking-widest text-[#00d1ff] font-bold border-b border-[#2d3139]/50 pb-1.5 font-mono flex items-center gap-1.5">
             <Compass size={12} className="text-[#00d1ff]" />
             <span>Doppler System</span>
           </div>
@@ -236,7 +236,7 @@ export default function SidebarControls({
                   <button 
                     key={type} 
                     onClick={() => setFlowType(type as any)} 
-                    className={`h-9 text-[10px] uppercase font-bold font-mono rounded-lg border transition-all select-none cursor-pointer flex items-center justify-center ${flowType === type ? 'bg-[#ffb800]/15 text-[#ffb800] border-[#ffb800]/60 shadow-[0_0_10px_rgba(255,184,0,0.1)]' : 'border-[#2d3139]/60 text-[#8e9299] bg-[#16181d] hover:border-[#8e9299]/50'}`}
+                    className={`h-9 text-[10px] uppercase font-bold font-mono rounded-lg border transition-all select-none cursor-pointer flex items-center justify-center ${flowType === type ? 'bg-[#ffb800]/15 text-[#ffb800] border-[#ffb800]/60 shadow-[0_0_15px_rgba(255,184,0,0.15)]' : 'border-[#2d3139]/50 text-[#8e9299] bg-[#0c0d10] hover:border-[#8e9299]/50 hover:bg-[#16181d]'}`}
                   >
                     {type}
                   </button>
@@ -253,12 +253,12 @@ export default function SidebarControls({
           exit={{ opacity: 0, y: -5 }} 
           className="flex flex-col gap-4"
         >
-          <div className="text-[11px] uppercase tracking-widest text-[#00d1ff] font-bold border-b border-[#2d3139] pb-1.5 font-mono flex items-center gap-1.5">
+          <div className="text-[11px] uppercase tracking-widest text-[#00d1ff] font-bold border-b border-[#2d3139]/50 pb-1.5 font-mono flex items-center gap-1.5">
             <HardDrive size={12} className="text-[#00d1ff]" />
             <span>TGC Receiver Gain</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-2 border border-[#2d3139]/40 bg-[#0c0d10] p-3 rounded-xl">
             {['Top', 'Mid', 'Deep', 'Far'].map((zone, i) => (
               <TouchSlider
                 key={zone}
@@ -286,8 +286,8 @@ export default function SidebarControls({
           className="flex flex-col gap-4"
         >
           {/* Probe Array Row: Compact 3-Column buttons on mobile and desktop */}
-          <div className="flex flex-col gap-2">
-            <div className="text-[11px] uppercase tracking-widest text-[#8e9299] font-bold border-b border-[#2d3139] pb-1.5 font-mono flex items-center gap-1.5">
+          <div className="flex flex-col gap-3">
+            <div className="text-[11px] uppercase tracking-widest text-[#8e9299] font-bold border-b border-[#2d3139]/50 pb-1.5 font-mono flex items-center gap-1.5">
               <Layers size={12} className="text-[#00d1ff]" />
               <span>Transducer Type</span>
             </div>
@@ -439,12 +439,12 @@ export default function SidebarControls({
             </div>
           </div>
 
-          <div className="space-y-3 pt-1">
-            <div className="text-[11px] uppercase tracking-widest text-[#8e9299] font-bold border-b border-[#2d3139] pb-1.5 font-mono flex items-center gap-1.5">
+          <div className="space-y-4 pt-1">
+            <div className="text-[11px] uppercase tracking-widest text-[#8e9299] font-bold border-b border-[#2d3139]/50 pb-1.5 font-mono flex items-center gap-1.5">
               <Cpu size={12} className="text-yellow-500" />
               <span>Acoustic Parameters</span>
             </div>
-            <div className="space-y-2.5">
+            <div className="space-y-3.5">
               <TouchSlider
                 label="Crystal thickness"
                 min={0.1}
@@ -456,17 +456,17 @@ export default function SidebarControls({
                 colorClass="amber"
               />
 
-              <div className="space-y-1.5 pt-1">
-                <div className="text-[9.5px] text-[#8e9299] uppercase font-bold font-mono">Propagation Medium</div>
+              <div className="space-y-2 pt-1 border-t border-[#2d3139]/30">
+                <div className="text-[9.5px] text-[#8e9299] uppercase font-bold font-mono pt-2">Propagation Medium</div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {media.map(m => (
                     <button 
                       key={m.id} 
                       onClick={() => setActiveMedium(m)} 
-                      className={`h-9 text-[9.5px] uppercase font-bold font-mono rounded-lg border transition-all select-none cursor-pointer flex flex-col items-center justify-center leading-normal ${activeMedium.id === m.id ? 'bg-[#00d1ff]/10 text-[#00d1ff] border-[#00d1ff]' : 'border-[#2d3139]/60 text-[#8e9299] bg-[#16181d]'}`}
+                      className={`h-11 text-[9.5px] uppercase font-bold font-mono rounded-lg border transition-all select-none cursor-pointer flex flex-col items-center justify-center leading-normal ${activeMedium.id === m.id ? 'bg-[#00d1ff]/10 text-[#00d1ff] border-[#00d1ff] shadow-[0_0_15px_rgba(0,209,255,0.15)]' : 'border-[#2d3139]/50 text-[#8e9299] bg-[#0c0d10] hover:bg-[#16181d]'}`}
                     >
                       <span className="font-extrabold">{m.name}</span>
-                      <span className="text-[7.5px] text-slate-500 font-normal leading-none">{m.c * 1000} m/s</span>
+                      <span className="text-[7.5px] text-slate-500 font-normal leading-none mt-0.5">{m.c * 1000} m/s</span>
                     </button>
                   ))}
                 </div>

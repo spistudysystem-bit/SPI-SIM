@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, 
@@ -15,7 +15,14 @@ import {
   Flame,
   Play,
   Square,
-  Save
+  Save,
+  Sparkles,
+  List,
+  Search,
+  Check,
+  Compass,
+  Keyboard,
+  BookMarked
 } from 'lucide-react';
 import { WaveSim, DopplerSim } from '../shared/PhysicsSimulations';
 import { BOURDAIN_LECTURES } from '../../constants/bourdainLectures';
@@ -26,6 +33,8 @@ import { useNarrator } from '../../hooks/useNarrator';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import bourdainPortrait from '../../assets/images/bourdain_mode_portrait_1781263349950.jpg';
+import sedarisPortrait from '../../assets/images/sedaris_mode_portrait_1781263410370.jpg';
 
 interface QuizQuestion {
   q: string;
@@ -440,6 +449,63 @@ const CHAPTERS = [
   }
 ];
 
+const CHAPTER_FIGURES: Record<number, { src: string; caption: string; alt: string; title: string }> = {
+  0: {
+    src: '/src/assets/images/ultrasound_depth_13us_1780312184191.png',
+    title: 'Figure 1.1: Range Equation & Time-of-Flight Mapping',
+    caption: 'This clinical schematic illustrates the 13-microsecond range-equation rule in diagnostic medical sonography. As the sound pulse travels through soft tissue at a constant velocity of 1,540 m/s, it requires exactly 13 µs of total round-trip time-of-flight to sample each centimeter of anatomical depth.',
+    alt: 'High-contrast neon mathematical wave-pathing diagram showing reflector flight timings.'
+  },
+  1: {
+    src: '/src/assets/images/ultrasound_waves_1779739883039.png',
+    title: 'Figure 2.1: Mechanical Longitudinal Wave Propagation',
+    caption: 'A high-fidelity depiction of mechanical acoustic waves traversing tissue media. Compressions show areas of elevated molecular density and pressure, while rarefactions correspond to low-density expansion phases.',
+    alt: 'Vibrant medical schematic showing parallel molecular compression fields.'
+  },
+  2: {
+    src: '/src/assets/images/ultrasound_frequency_1779739899960.png',
+    title: 'Figure 3.1: Frequency vs Spatial Resolution & Attenuation Decay',
+    caption: 'Compares a 10 MHz high-frequency pulse versus a 5 MHz penetration wave. High operating frequencies offer pristine spatial resolution but experience rapid absorption and attenuation, limiting deep tissue access.',
+    alt: 'Medical graph illustrating wave decay gradients as a function of depth and frequency.'
+  },
+  3: {
+    src: '/src/assets/images/ultrasound_pulsed_wave_timing_1780381493749.png',
+    title: 'Figure 4.1: Pulsed Wave Timings',
+    caption: 'A highly detailed visual schematic showing a pulsed ultrasound wave, demonstrating pulse duration, spatial pulse length, and pulse repetition period.',
+    alt: 'Pulsed wave temporal timings diagram.'
+  },
+  4: {
+    src: '/src/assets/images/ultrasound_crystal_1779739915821.png',
+    title: 'Figure 5.1: Piezoelectric Transducer Stack Assembly',
+    caption: 'A detailed structural layout of a single-element medical ultrasound transducer. Showcases the active Lead Zirconate Titanate (PZT) ceramic crystal, the backing damping block to shorten pulse lengths, and the optimal quarter-wavelength matching layer.',
+    alt: 'Structural schematic of a modern diagnostic ultrasound probe crystal stack.'
+  },
+  5: {
+    src: '/src/assets/images/ultrasound_signal_processing_chain_1780381509944.png',
+    title: 'Figure 6.1: Signal Processing Chain',
+    caption: 'A highly detailed block diagram of an ultrasound system signal processing chain, from transmitter and active crystal array down through the receiver, scan converter, and finally to the display monitor.',
+    alt: 'System configuration and processing sequence logic diagram.'
+  },
+  6: {
+    src: '/src/assets/images/ultrasound_doppler_angle_1780312204285.png',
+    title: 'Figure 7.1: Vascular Doppler Intercept Metrics & Cosine Geometry',
+    caption: 'Vascular blood velocity vectors and the sound-beam steering angle relative to fluid direction. Standard clinical angle calibration must seek a 60-degree intercept to bound frequency shifts within linear cosine scaling.',
+    alt: 'Neon clinical diagram of blood flow vectors in a vessel intercepted by an angled Doppler beam.'
+  },
+  7: {
+    src: '/src/assets/images/ultrasound_artifacts_shadow_1780312223092.png',
+    title: 'Figure 8.1: Diagnostic Ultrasound Shadows and Comet-Tail Artifacts',
+    caption: 'Underlying biomechanics of acoustic shadow lines cast behind highly reflective kidney stones, and parallel linear reverberations occurring inside fluid-tissue boundaries.',
+    alt: 'Medical illustration demonstrating acoustic shadowing underneath calcification lesions.'
+  },
+  8: {
+    src: '/src/assets/images/ultrasound_safety_alara_1780312243868.png',
+    title: 'Figure 9.1: Bioeffects Limits & Safety Monitoring Dashboards',
+    caption: 'Demonstrates real-world calibration gauges evaluating Mechanical Index (MI) cavitation risk and Thermal Index (TI) temperature escalation levels to enforce the clinical ALARA standard.',
+    alt: 'Safety diagram indicating thermal heating and mechanical cavitation boundaries.'
+  }
+};
+
 export default function MasterTextbook() {
   const { user } = useAuth();
   const [studyStyle, setStudyStyle] = useState<'standard' | 'bourdain' | 'sedaris'>(() => {
@@ -510,6 +576,147 @@ export default function MasterTextbook() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Navigation drawer & Elegant navigation HUD states
+  const [isLessonMapOpen, setIsLessonMapOpen] = useState(false);
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [showShortcutIndicator, setShowShortcutIndicator] = useState(false);
+  const [showFloatingNav, setShowFloatingNav] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Helper score / completion states
+  const getChapterScore = (chIdx: number) => {
+    const ch = CHAPTERS[chIdx];
+    if (!ch) return { answered: 0, total: 3, correct: 0 };
+    let answered = 0;
+    let correct = 0;
+    ch.quiz.forEach((q, qIdx) => {
+      const key = `${chIdx}-${qIdx}`;
+      const ans = quizAnswers[key];
+      if (ans !== undefined) {
+        answered++;
+        if (ans === q.a) {
+          correct++;
+        }
+      }
+    });
+    return { answered, total: ch.quiz.length, correct };
+  };
+
+  const getChaptersTotalProgress = () => {
+    let totalQuestions = 0;
+    let answeredQuestions = 0;
+    let correctQuestions = 0;
+    CHAPTERS.forEach((ch, chIdx) => {
+      const score = getChapterScore(chIdx);
+      totalQuestions += score.total;
+      answeredQuestions += score.answered;
+      correctQuestions += score.correct;
+    });
+    return { 
+      totalQuestions, 
+      answeredQuestions, 
+      correctQuestions, 
+      percentage: totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0 
+    };
+  };
+
+  // Keyboard shortcut listener (tactile navigation for sonographers)
+  useEffect(() => {
+    const activeLecturesArray = studyStyle === 'sedaris' ? SEDARIS_LECTURES : BOURDAIN_LECTURES;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.getAttribute('contenteditable') === 'true'
+      )) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        if (studyStyle === 'standard') {
+          if (activeCh > 0) {
+            e.preventDefault();
+            setActiveCh(prev => prev - 1);
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            triggerShortcutIndicator();
+          }
+        } else {
+          if (currentBourdainIndex > 0) {
+            e.preventDefault();
+            setCurrentBourdainIndex(prev => prev - 1);
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            triggerShortcutIndicator();
+          }
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (studyStyle === 'standard') {
+          if (activeCh < CHAPTERS.length - 1) {
+            e.preventDefault();
+            setActiveCh(prev => prev + 1);
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            triggerShortcutIndicator();
+          }
+        } else {
+          if (currentBourdainIndex < activeLecturesArray.length - 1) {
+            e.preventDefault();
+            setCurrentBourdainIndex(prev => prev + 1);
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            triggerShortcutIndicator();
+          }
+        }
+      }
+    };
+
+    let indicatorTimeout: NodeJS.Timeout;
+    const triggerShortcutIndicator = () => {
+      setShowShortcutIndicator(true);
+      clearTimeout(indicatorTimeout);
+      indicatorTimeout = setTimeout(() => setShowShortcutIndicator(false), 1200);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(indicatorTimeout);
+    };
+  }, [studyStyle, activeCh, currentBourdainIndex]);
+
+  // Scroll tracer on the container ref to show/hide the floating scroll hud
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (container.scrollTop > 350) {
+        setShowFloatingNav(true);
+      } else {
+        setShowFloatingNav(false);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [scrollRef.current]);
 
   // Load progress from Firestore on user log in
   useEffect(() => {
@@ -631,10 +838,111 @@ export default function MasterTextbook() {
     if (quizAnswers[key] !== undefined) return;
     setQuizAnswers(prev => ({ ...prev, [key]: optIndex }));
     setShowExplanation(prev => ({ ...prev, [key]: true }));
+
+    // Reward XP & Coins for completing quiz questions in the textbook
+    try {
+      const correctIndex = chapter.quiz[qIndex].a;
+      const isCorrect = optIndex === correctIndex;
+      const baseXP = isCorrect ? 25 : 5;
+      const baseCoins = isCorrect ? 10 : 2;
+
+      // Double XP if booster purchased
+      let hasDoubleXP = false;
+      const localG = localStorage.getItem('spi_gamification_v1');
+      if (localG) {
+        try {
+          const parsed = JSON.parse(localG);
+          if (parsed.unlockedPowerUps && parsed.unlockedPowerUps.includes('double_xp')) {
+            hasDoubleXP = true;
+          }
+        } catch {}
+      }
+
+      const finalXP = hasDoubleXP ? baseXP * 2 : baseXP;
+      const finalCoins = hasDoubleXP ? baseCoins * 2 : baseCoins;
+
+      if (user) {
+        // Cloud Profile Update
+        const activeId = localStorage.getItem(`active_profile_${user.uid}`) || 'primary-operator';
+        const profRef = doc(db, 'users', user.uid, 'profiles', activeId);
+        getDoc(profRef).then(snap => {
+          if (snap.exists()) {
+            const current = snap.data();
+            const nextXP = (current.xp !== undefined ? current.xp : 220) + finalXP;
+            const nextCoins = (current.coins !== undefined ? current.coins : 75) + finalCoins;
+            setDoc(profRef, { xp: nextXP, coins: nextCoins }, { merge: true }).then(() => {
+              window.dispatchEvent(new Event('storage'));
+            });
+          }
+        }).catch(err => console.warn(err));
+
+        // Sync to primary state
+        const docRef = doc(db, 'users', user.uid);
+        getDoc(docRef).then(snap => {
+          if (snap.exists() && snap.data().gamification) {
+            const g = snap.data().gamification;
+            const nextXP = (g.xp !== undefined ? g.xp : 220) + finalXP;
+            const nextCoins = (g.tokens !== undefined ? g.tokens : 75) + finalCoins;
+            setDoc(docRef, { 
+              gamification: {
+                ...g,
+                xp: nextXP,
+                tokens: nextCoins
+              }
+            }, { merge: true });
+          }
+        }).catch(err => console.warn(err));
+      } else {
+        // Guest Profile Update
+        const activeId = localStorage.getItem('active_profile_guest') || 'guest-student';
+        const localProfs = localStorage.getItem('guest_operator_profiles');
+        if (localProfs) {
+          try {
+            const parsed = JSON.parse(localProfs);
+            const updatedProfs = parsed.map((p: any) => {
+              if (p.id === activeId) {
+                return {
+                  ...p,
+                  xp: (p.xp !== undefined ? p.xp : 220) + finalXP,
+                  coins: (p.coins !== undefined ? p.coins : 75) + finalCoins
+                };
+              }
+              return p;
+            });
+            localStorage.setItem('guest_operator_profiles', JSON.stringify(updatedProfs));
+          } catch {}
+        }
+
+        // Also update standard fallback state
+        if (localG) {
+          try {
+            const parsed = JSON.parse(localG);
+            parsed.xp = (parsed.xp !== undefined ? parsed.xp : 220) + finalXP;
+            parsed.tokens = (parsed.tokens !== undefined ? parsed.tokens : 75) + finalCoins;
+            localStorage.setItem('spi_gamification_v1', JSON.stringify(parsed));
+          } catch {}
+        }
+      }
+
+      // Dispatch event to synchronize pages instantly
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.warn("Could not synchronize quiz progress to gamified profile", e);
+    }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0c0d10] overflow-y-auto custom-scrollbar">
+    <div ref={scrollRef} className="flex flex-col h-full bg-[#0c0d10] overflow-y-auto custom-scrollbar">
+      {/* Hero Banner */}
+      <div className="w-full relative h-48 md:h-64 border-b border-[#2d3139]/40 flex items-center justify-center shrink-0">
+         <img src="/src/assets/images/ultrasound_academic_library_1780381440826.png" className="absolute inset-0 w-full h-full object-cover opacity-50 select-none" alt="Academy Library" referrerPolicy="no-referrer" />
+         <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d10] via-transparent to-[#0c0d10]/40" />
+         <div className="relative z-10 flex flex-col items-center justify-center text-center p-4">
+            <h1 className="text-2xl md:text-4xl font-serif text-white tracking-wide shadow-black drop-shadow-2xl mb-2"><span className="text-yellow-400 font-mono font-bold">U.U.U.</span> UNDERGROUND <span className="text-[#00d1ff]">ACADEMY</span></h1>
+            <p className="text-[10px] md:text-xs font-mono text-[#00d1ff] tracking-widest uppercase shadow-black drop-shadow-md bg-[#00d1ff]/10 border border-[#00d1ff]/20 px-4 py-1.5 rounded-full backdrop-blur">World-Class Ultrasound Education Curriculum</p>
+         </div>
+      </div>
+
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-8 py-8 sm:py-12">
         
         {/* Toggle Mode Selector */}
@@ -702,26 +1010,41 @@ export default function MasterTextbook() {
             className="space-y-6 sm:space-y-8"
           >
             {/* Standard Chapter Selector Dropdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[#16181d] border border-white/10 rounded-2xl p-4 sm:p-5">
-              <div className="space-y-1">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#16181d] border border-white/10 rounded-2xl p-4 sm:p-5">
+              <div className="space-y-1 w-full md:w-auto">
                 <span className="text-[9px] uppercase tracking-widest font-mono text-[#00d1ff] font-bold block">Syllabus Guide</span>
                 <h3 className="text-sm font-sans font-medium text-[#c0c3cc]">Jump to any core registry chapter</h3>
               </div>
               
-              <select
-                value={activeCh}
-                onChange={(e) => {
-                  setActiveCh(parseInt(e.target.value));
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="bg-[#0c0d10] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00d1ff] w-full cursor-pointer"
-              >
-                {CHAPTERS.map((ch, idx) => (
-                  <option key={ch.id} value={idx}>
-                    {ch.tag.split(' · ')[0]}: {ch.title}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2 w-full md:w-auto md:flex-1 md:justify-end max-w-xl">
+                <select
+                  value={activeCh}
+                  onChange={(e) => {
+                    setActiveCh(parseInt(e.target.value));
+                    if (scrollRef.current) {
+                      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="bg-[#0c0d10] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00d1ff] flex-1 min-w-0 cursor-pointer"
+                >
+                  {CHAPTERS.map((ch, idx) => (
+                    <option key={ch.id} value={idx}>
+                      {ch.tag.split(' · ')[0]}: {ch.title}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setIsLessonMapOpen(true)}
+                  className="px-4 py-3 rounded-xl border border-[#00d1ff]/20 bg-[#00d1ff]/5 hover:bg-[#00d1ff]/10 text-[#00d1ff] flex items-center justify-center gap-2 hover:border-[#00d1ff]/50 transition-all font-bold cursor-pointer font-sans shrink-0"
+                  title="Open visual syllabus directory map"
+                >
+                  <Compass size={16} className="animate-pulse" />
+                  <span className="hidden sm:inline text-xs font-mono tracking-wider">MAP</span>
+                </button>
+              </div>
             </div>
 
             {/* Header */}
@@ -1541,6 +1864,80 @@ export default function MasterTextbook() {
                   </div>
                 </div>
               )}
+
+              {activeCh === 6 && (
+                <div className="my-10 p-6 bg-gradient-to-r from-teal-500/5 to-[#00d1ff]/5 border border-teal-500/25 rounded-2xl relative overflow-hidden shadow-xl" id="pw-doppler-spotlight">
+                  {/* Decorative background circle */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#00d1ff]/10 rounded-full blur-2xl pointer-events-none" />
+                  
+                  <div className="p-3 bg-teal-500/10 border border-teal-500/20 text-teal-400 font-mono text-[9px] uppercase tracking-widest rounded-lg inline-flex items-center gap-2 mb-4 font-bold">
+                    <FlaskConical size={12} className="text-teal-400" /> Syllabus Spotlight: Pulsed-Wave Doppler
+                  </div>
+                  
+                  <h3 className="text-xl font-serif italic text-white mb-1">CHAPTER 6 &bull; DOPPLER ULTRASOUND</h3>
+                  <h4 className="text-sm font-sans font-bold text-slate-200 mb-3">Chapter 6: Pulsed-Wave Doppler</h4>
+                  
+                  <div className="space-y-4 text-[#cfd3db] text-sm leading-relaxed">
+                    <p className="first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:text-[#00d1ff] first-letter:mr-2 first-letter:float-left">
+                      Welcome to the zany world of Pulsed-Wave Doppler, where ultrasound waves
+                      are sent out in short, controlled bursts, much like a toddler with a toy drum.
+                      These bursts allow us to measure the velocity of blood flow with pinpoint
+                      accuracy, all while keeping the machine from going into a full-on percussion
+                      solo. It's like having a polite conversation with the bloodstream, asking it politely
+                      to "please slow down" or "speed up," depending on the situation.
+                    </p>
+                    <p>
+                      Now, imagine you're a traffic cop, but instead of cars, you're monitoring red
+                      blood cells zipping through the vessels. Pulsed-Wave Doppler is your radar
+                      gun, catching those speedy little cells in the act. But here's the twist: unlike
+                      a traffic cop who might hand out tickets, you get to celebrate these speedsters,
+                      as they reveal crucial information about cardiovascular health. It's like being
+                      a detective, but with less trench coat and more lab coat.
+                    </p>
+                    <p className="border-l-2 border-[#00d1ff]/50 pl-4 py-1 italic bg-[#00d1ff]/5 rounded-r-lg">
+                      But beware, dear student, for the Pulsed-Wave Doppler has its quirks. Just like
+                      trying to order coffee in a foreign country, you might encounter some aliasing—where
+                      the machine gets a bit confused and starts showing you speeds that make no sense.
+                      Think of it as your ultrasound machine's way of saying, "Oops, I might have had
+                      one too many espressos!" Fear not, though, because with a few adjustments, you'll
+                      have it back on track, ready to ace your exams and impress your professors with
+                      your newfound Doppler prowess.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* High-Fidelity Medical Figure Card */}
+              {CHAPTER_FIGURES[activeCh] && (
+                <div className="my-10 p-5 bg-[#101216] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
+                  <div className="p-4 border-b border-white/5 bg-[#14161c] flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-[#8e9299] uppercase tracking-widest flex items-center gap-1.5 font-bold font-mono">
+                      <Sparkles size={12} className="text-[#00d1ff] animate-pulse" /> Diagnostic Technical Figure
+                    </span>
+                    <span className="text-[10px] font-mono text-[#00d1ff] bg-[#00d1ff]/10 px-2.5 py-0.5 rounded-full font-bold">
+                      SPI Study Core
+                    </span>
+                  </div>
+                  
+                  <div className="p-6 flex items-center justify-center bg-[#07080b]">
+                    <img 
+                      src={CHAPTER_FIGURES[activeCh].src} 
+                      alt={CHAPTER_FIGURES[activeCh].alt} 
+                      referrerPolicy="no-referrer"
+                      className="rounded-xl w-full max-h-[400px] object-cover border border-white/5 shadow-2xl hover:scale-[1.01] transition-transform duration-300"
+                    />
+                  </div>
+                  
+                  <div className="p-5 bg-[#0e1014] border-t border-white/5 space-y-1">
+                    <h5 className="text-white text-sm font-semibold tracking-wide font-sans">
+                      {CHAPTER_FIGURES[activeCh].title}
+                    </h5>
+                    <p className="text-xs text-[#8e9299] leading-relaxed italic font-serif">
+                      {CHAPTER_FIGURES[activeCh].caption}
+                    </p>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Quiz Section */}
@@ -1654,56 +2051,89 @@ export default function MasterTextbook() {
             className="space-y-8"
           >
             {/* Lecture Selector Dropdown */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[#16181d] border border-white/10 rounded-2xl p-4 sm:p-5`}>
-              <div className="space-y-1">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-[#16181d] border border-white/10 rounded-2xl p-4 sm:p-5">
+              <div className="space-y-1 w-full md:w-auto">
                 <span className={`text-[9px] uppercase tracking-widest font-mono ${themeColorClass} font-bold block`}>{selectLabel}</span>
                 <h3 className="text-sm font-sans font-medium text-[#c0c3cc]">{selectSublabel}</h3>
               </div>
               
-              <select
-                value={currentBourdainIndex}
-                onChange={(e) => {
-                  setCurrentBourdainIndex(parseInt(e.target.value));
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`bg-[#0c0d10] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 ${themeColorClassRing} w-full`}
-              >
-                {activeLecturesArray.map((lesson, idx) => (
-                  <option key={lesson.id} value={idx}>
-                    [{lesson.lessonNum}] {lesson.title}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2 w-full md:w-auto md:flex-1 md:justify-end max-w-xl">
+                <select
+                  value={currentBourdainIndex}
+                  onChange={(e) => {
+                    setCurrentBourdainIndex(parseInt(e.target.value));
+                    if (scrollRef.current) {
+                      scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className={`bg-[#0c0d10] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 ${themeColorClassRing} flex-1 min-w-0 cursor-pointer`}
+                >
+                  {activeLecturesArray.map((lesson, idx) => (
+                    <option key={lesson.id} value={idx}>
+                      [{lesson.lessonNum}] {lesson.title}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setIsLessonMapOpen(true)}
+                  className={`px-4 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all font-bold cursor-pointer shrink-0 ${
+                    isSedaris 
+                      ? 'border-violet-500/25 bg-violet-500/5 text-violet-400 hover:border-violet-500/50 hover:bg-violet-500/10'
+                      : 'border-amber-500/25 bg-amber-500/5 text-amber-500 hover:border-amber-500/50 hover:bg-amber-500/10'
+                  }`}
+                  title="Open visual syllabus directory map"
+                >
+                  <Compass size={16} className="animate-pulse" />
+                  <span className="hidden sm:inline text-xs font-mono tracking-wider">MAP</span>
+                </button>
+              </div>
             </div>
 
             {/* Lesson Title Card */}
-            <div className="relative border-b border-white/5 pb-8">
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-3">
-                  <span className={`text-[10px] sm:text-[11px] font-bold ${themeColorClass} tracking-[0.2em] uppercase block`}>
-                    {activeLesson.module} · {activeLesson.lessonNum}
-                  </span>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-black text-white leading-tight">
-                    {activeLesson.title}
-                  </h1>
-                  <p className={`text-lg ${themeColorClass} italic font-serif`}>
-                    "{activeLesson.subtitle}"
-                  </p>
+            <div className={`relative border border-white/5 bg-gradient-to-br ${isSedaris ? 'from-violet-500/5 to-transparent' : 'from-amber-500/5 to-transparent'} rounded-3xl p-6 sm:p-10 mb-8 overflow-hidden`}>
+              <div className={`absolute top-0 right-0 w-64 h-64 ${isSedaris ? 'bg-violet-500/10' : 'bg-amber-500/10'} rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/4`} />
+              
+              <div className="relative flex flex-col sm:flex-row justify-between items-start gap-6">
+                <div className="flex gap-6 items-start w-full">
+                  {!isSedaris ? (
+                    <div className="hidden sm:block w-24 h-24 rounded-2xl overflow-hidden shrink-0 border-2 border-amber-500/20 shadow-[0_0_20px_rgba(245,158,11,0.15)] grayscale mix-blend-screen opacity-90 sepia-[0.3]">
+                      <img src={bourdainPortrait} alt="Dr. Bourdain" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="hidden sm:block w-24 h-24 rounded-2xl overflow-hidden shrink-0 border-2 border-violet-500/20 shadow-[0_0_20px_rgba(139,92,246,0.15)] grayscale mix-blend-screen opacity-90 sepia-[0.2] hue-rotate-[-30deg]">
+                      <img src={sedarisPortrait} alt="Sedaris Mode" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="space-y-3 relative z-10 w-full">
+                    <span className={`text-[10px] sm:text-[11px] font-bold ${themeColorClass} tracking-[0.2em] uppercase flex items-center gap-2`}>
+                      <BookOpen size={14} />
+                      {activeLesson.module} · {activeLesson.lessonNum}
+                    </span>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-black text-white leading-tight">
+                      {activeLesson.title}
+                    </h1>
+                    <p className={`text-lg sm:text-xl ${isSedaris ? 'text-violet-200' : 'text-amber-200'} italic font-serif`}>
+                      "{activeLesson.subtitle}"
+                    </p>
+                  </div>
                 </div>
                 
                 <button 
                   onClick={toggleSpeakBourdain}
-                  className={`p-4 rounded-full border transition-all shrink-0 flex items-center justify-center gap-2 ${
+                  className={`p-4 rounded-full border transition-all shrink-0 flex items-center justify-center gap-2 z-10 relative ${
                     isPlayingText 
-                    ? `${themeColorClassBgLight} ${themeColorClassBorder} ${themeColorClass} animate-pulse` 
-                    : `bg-white/5 border-white/10 text-[#8e9299] hover:text-white hover:${isSedaris ? 'border-violet-500/30' : 'border-amber-500/30'}`
+                    ? `${themeColorClassBgLight} border ${isSedaris ? 'border-violet-500/50' : 'border-amber-500/50'} ${themeColorClass} animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.1)]` 
+                    : `bg-[#0c0d10] border-white/10 text-[#8e9299] hover:text-white hover:${isSedaris ? 'border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.15)]' : 'border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'}`
                   }`}
                   title={isPlayingText ? 'Stop Speech' : 'Listen with Audio Narrator'}
                 >
                   {isPlayingText ? (
                     <>
                       <Square size={20} className="fill-current" />
-                      <span className="text-xs uppercase font-bold tracking-wider font-mono hidden sm:inline">Stop Audio</span>
+                      <span className="text-xs uppercase font-bold tracking-wider font-mono hidden sm:inline">Stop</span>
                     </>
                   ) : (
                     <>
@@ -1716,15 +2146,43 @@ export default function MasterTextbook() {
             </div>
 
             {/* Narrative Body wrapped in clean typography */}
-            <div className="space-y-6 pt-4 font-serif text-base sm:text-lg text-[#8e9299] leading-relaxed max-w-3xl">
+            <div className="space-y-8 pt-4 font-serif text-base sm:text-lg text-[#8e9299] leading-relaxed max-w-3xl">
               {activeLesson.content.map((p, pIdx) => {
+                const hasDialogue = p.includes('"');
+                const isFirst = pIdx === 0;
+                // Add a small divider every 4 paragraphs to pace the reading
+                const showDivider = pIdx > 0 && pIdx % 4 === 0;
+
+                // Format quote strings to be white and italic
                 const formattedP = p.replace(/"([^"]+)"/g, '<span class="text-white font-medium italic">"$1"</span>');
+                
                 return (
-                  <p 
-                    key={pIdx} 
-                    className={`hover:text-white transition-colors duration-300 border-l border-white/5 hover:${isSedaris ? 'border-violet-500/30' : 'border-amber-500/30'} pl-5 py-0.5`}
-                    dangerouslySetInnerHTML={{ __html: formattedP }}
-                  />
+                  <React.Fragment key={pIdx}>
+                    {showDivider && (
+                      <div className="flex justify-center py-4">
+                        <div className={`w-8 h-px ${isSedaris ? 'bg-violet-500/30' : 'bg-amber-500/30'}`} />
+                      </div>
+                    )}
+                    
+                    {hasDialogue && !isFirst ? (
+                      // Treat paragraphs with quotes as dialogue blockquotes
+                      <div className={`relative pl-8 sm:pl-10 py-4 my-6 bg-gradient-to-r ${isSedaris ? 'from-violet-500/5' : 'from-amber-500/5'} to-transparent border-l-4 ${isSedaris ? 'border-violet-500/30' : 'border-amber-500/30'} rounded-r-2xl`}>
+                        <div className={`absolute top-4 left-3 text-2xl font-serif leading-none ${isSedaris ? 'text-violet-500/30' : 'text-amber-500/30'}`}>"</div>
+                        <p 
+                          className="hover:text-white transition-colors duration-300 text-white/80"
+                          dangerouslySetInnerHTML={{ __html: formattedP }}
+                        />
+                      </div>
+                    ) : (
+                      // Standard paragraphs (with dropcap on the first one)
+                      <p 
+                        className={`hover:text-white transition-colors duration-300 border-l border-white/5 hover:${isSedaris ? 'border-violet-500/30' : 'border-amber-500/30'} pl-5 py-0.5 ${
+                          isFirst ? 'first-letter:text-4xl sm:first-letter:text-5xl first-letter:font-black first-letter:text-white first-letter:mr-1.5 first-letter:float-left' : ''
+                        }`}
+                        dangerouslySetInnerHTML={{ __html: formattedP }}
+                      />
+                    )}
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -1804,6 +2262,332 @@ export default function MasterTextbook() {
           </motion.div>
         )}
       </div>
+
+      {/* Floating HUD navigation bar on screen scroll */}
+      <AnimatePresence>
+        {showFloatingNav && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 40, x: '-50%' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#121317]/95 backdrop-blur-xl border border-white/10 px-3 py-2 rounded-full shadow-[0_15px_30px_rgba(0,0,0,0.6)] flex items-center gap-2 sm:gap-4 select-none mr-[-50%]"
+          >
+            {/* Prev Button */}
+            <button
+              disabled={studyStyle === 'standard' ? activeCh === 0 : currentBourdainIndex === 0}
+              onClick={() => {
+                if (studyStyle === 'standard') {
+                  setActiveCh(prev => prev - 1);
+                } else {
+                  setCurrentBourdainIndex(prev => prev - 1);
+                }
+                if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="p-1.5 rounded-full hover:bg-white/5 text-[#8e9299] hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+              title="Previous Page (Left Arrow)"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="h-4 w-px bg-white/10" />
+
+            {/* Title click -> opens map */}
+            <button
+              onClick={() => setIsLessonMapOpen(true)}
+              className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#1c1d24]/60 border border-white/5 hover:border-[#00d1ff]/20 hover:bg-[#00d1ff]/5 transition-all text-left group cursor-pointer"
+            >
+              <List size={12} className="text-[#00d1ff] group-hover:rotate-180 transition-transform duration-300" />
+              <span className="text-[10px] font-mono font-bold tracking-widest text-[#8e9299] group-hover:text-white uppercase truncate max-w-[120px] sm:max-w-[170px]">
+                {studyStyle === 'standard' 
+                  ? `Chapter ${activeCh + 1}` 
+                  : `Lecture ${activeLesson.lessonNum.replace('Lesson ', '')}`
+                }
+              </span>
+            </button>
+
+            <div className="h-4 w-px bg-white/10" />
+
+            {/* Next Button */}
+            <button
+              disabled={
+                studyStyle === 'standard' 
+                  ? activeCh === CHAPTERS.length - 1 
+                  : currentBourdainIndex === activeLecturesArray.length - 1
+              }
+              onClick={() => {
+                if (studyStyle === 'standard') {
+                  setActiveCh(prev => prev + 1);
+                } else {
+                  setCurrentBourdainIndex(prev => prev + 1);
+                }
+                if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`p-1.5 rounded-full text-white transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer ${
+                studyStyle === 'standard' 
+                  ? 'bg-[#00d1ff]/10 hover:bg-[#00d1ff]/25 text-[#00d1ff]' 
+                  : isSedaris 
+                    ? 'bg-violet-500/10 hover:bg-violet-500/25 text-violet-400'
+                    : 'bg-amber-500/10 hover:bg-amber-500/25 text-amber-500'
+              }`}
+              title="Next Page (Right Arrow)"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard Shortcut Indicator Toast */}
+      <AnimatePresence>
+        {showShortcutIndicator && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 15 }}
+            className="fixed bottom-20 right-6 z-50 bg-[#16181d] border border-white/10 px-4 py-2.5 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] flex items-center gap-2.5 text-white text-xs font-mono select-none"
+          >
+            <Keyboard size={14} className="text-[#00d1ff] animate-pulse" />
+            <span className="text-zinc-300 font-bold tracking-tight">Flipped page <span className="text-[#00d1ff]">via Arrow Key</span></span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Curriculum Map sliding side drawer */}
+      <AnimatePresence>
+        {isLessonMapOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsLessonMapOpen(false)}
+              className="fixed inset-0 bg-black/85 backdrop-blur-sm z-55 cursor-pointer"
+            />
+
+            {/* Drawer Body */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 26, stiffness: 210 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#0c0d11] border-l border-white/10 z-55 shadow-2xl flex flex-col overflow-hidden text-white font-sans"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-[#111317]">
+                <div className="flex items-center gap-2.5">
+                  <Compass className="text-[#00d1ff] animate-pulse" size={18} />
+                  <div>
+                    <h2 className="text-sm font-bold tracking-wider uppercase font-sans">Curriculum Map</h2>
+                    <p className="text-[10px] font-mono text-[#8e9299]">Interactive Syllabus Directory</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsLessonMapOpen(false)}
+                  className="px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all text-[10px] font-mono border border-white/5 cursor-pointer"
+                >
+                  [ESC] CLOSE
+                </button>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="px-6 py-4.5 bg-[#0e1014] border-b border-white/5 space-y-2">
+                <div className="flex justify-between text-[11px] font-mono text-zinc-400">
+                  <span>QUIZ PROGRESS</span>
+                  <span className="text-[#00d1ff] font-bold">{getChaptersTotalProgress().percentage}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-[#00d1ff] transition-all duration-500"
+                    style={{ width: `${getChaptersTotalProgress().percentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+                  <span>{getChaptersTotalProgress().answeredQuestions} / {getChaptersTotalProgress().totalQuestions} QUESTIONS TRIED</span>
+                  <span>{getChaptersTotalProgress().correctQuestions} CORRECT ANSWERS</span>
+                </div>
+              </div>
+
+              {/* Search filter Input */}
+              <div className="p-4 border-b border-white/5 bg-[#111317] flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 text-zinc-500" size={13} />
+                  <input
+                    type="text"
+                    value={mapSearchQuery}
+                    onChange={(e) => setMapSearchQuery(e.target.value)}
+                    placeholder="Search chapter title, subtitle, formulas..."
+                    className="w-full bg-[#07080b] border border-white/10 rounded-lg pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-[#00d1ff]/40 text-white placeholder:text-zinc-600 transition-colors"
+                  />
+                  {mapSearchQuery && (
+                    <button
+                      onClick={() => setMapSearchQuery('')}
+                      className="absolute right-3 top-2.5 text-[9px] font-mono text-zinc-500 hover:text-white font-bold"
+                    >
+                      RESET
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scroll list */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-[#08090c]">
+                {/* Section 1: Chapters list */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-2">
+                    <BookOpen className="text-[#00d1ff]" size={14} />
+                    <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#00d1ff]">
+                      Standard Syllabus Chapters ({CHAPTERS.length})
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {CHAPTERS.map((ch, idx) => {
+                      const isSelected = studyStyle === 'standard' && activeCh === idx;
+                      const score = getChapterScore(idx);
+                      const percent = score.total > 0 ? Math.round((score.answered / score.total) * 100) : 0;
+                      const isDone = percent === 100;
+
+                      const matchesSearch = mapSearchQuery === '' || 
+                        ch.title.toLowerCase().includes(mapSearchQuery.toLowerCase()) || 
+                        ch.subtitle.toLowerCase().includes(mapSearchQuery.toLowerCase()) ||
+                        ch.tag.toLowerCase().includes(mapSearchQuery.toLowerCase());
+
+                      if (!matchesSearch) return null;
+
+                      return (
+                        <button
+                          key={ch.id}
+                          onClick={() => {
+                            setStudyStyle('standard');
+                            setActiveCh(idx);
+                            setIsLessonMapOpen(false);
+                            if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all relative flex flex-col gap-1 cursor-pointer group ${
+                            isSelected 
+                              ? 'bg-[#00d1ff]/5 border-[#00d1ff]/35 text-white ring-1 ring-[#00d1ff]/15' 
+                              : 'bg-[#121319]/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[9px] font-mono font-semibold tracking-wider ${isSelected ? 'text-[#00d1ff]' : 'text-zinc-500'}`}>
+                              {ch.tag.split(' · ')[0]}
+                            </span>
+                            {isDone ? (
+                              <span className="flex items-center gap-1 text-[8px] font-mono bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded-full text-emerald-400 font-bold">
+                                <Check size={8} /> Passed
+                              </span>
+                            ) : score.answered > 0 ? (
+                              <span className="text-[8px] font-mono bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-full text-amber-400">
+                                In Progress ({score.answered}/{score.total})
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="font-sans font-bold text-xs line-clamp-1 text-white/90 group-hover:text-white">
+                            {ch.title}
+                          </span>
+                          <span className="font-sans text-[10px] text-zinc-500 line-clamp-1">
+                            {ch.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section 2: Premium Lectures */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-2 pt-2 border-t border-white/5">
+                    <Flame className="text-amber-500" size={14} />
+                    <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#8e9299]">
+                      Vocal Lectures ({activeLecturesArray.length})
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-[#101115] rounded-xl border border-white/5 select-none">
+                    <button
+                      onClick={() => setStudyStyle('bourdain')}
+                      className={`px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider font-mono text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        studyStyle === 'bourdain' ? 'bg-amber-500 text-black shadow-md' : 'text-zinc-500 hover:text-white'
+                      }`}
+                    >
+                      <Flame size={11} className="fill-current" />
+                      Bourdain Theme
+                    </button>
+                    <button
+                      onClick={() => setStudyStyle('sedaris')}
+                      className={`px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider font-mono text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        studyStyle === 'sedaris' ? 'bg-violet-500 text-white shadow-md' : 'text-zinc-500 hover:text-white'
+                      }`}
+                    >
+                      <Volume2 size={11} />
+                      Sedaris Theme
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {activeLecturesArray.map((lec, idx) => {
+                      const isSelected = studyStyle !== 'standard' && currentBourdainIndex === idx;
+
+                      const matchesSearch = mapSearchQuery === '' || 
+                        lec.title.toLowerCase().includes(mapSearchQuery.toLowerCase()) || 
+                        lec.subtitle.toLowerCase().includes(mapSearchQuery.toLowerCase()) ||
+                        lec.module.toLowerCase().includes(mapSearchQuery.toLowerCase()) ||
+                        lec.lessonNum.toLowerCase().includes(mapSearchQuery.toLowerCase());
+
+                      if (!matchesSearch) return null;
+
+                      return (
+                        <button
+                          key={lec.id}
+                          onClick={() => {
+                            if (studyStyle === 'standard') setStudyStyle('bourdain');
+                            setCurrentBourdainIndex(idx);
+                            setIsLessonMapOpen(false);
+                            if (scrollRef.current) scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition-all relative flex flex-col gap-1 cursor-pointer group ${
+                            isSelected 
+                              ? `bg-${studyStyle === 'sedaris' ? 'violet' : 'amber'}-500/5 border-${studyStyle === 'sedaris' ? 'violet' : 'amber'}-500/35 text-white ring-1 ring-${studyStyle === 'sedaris' ? 'violet' : 'amber'}-500/15`
+                              : 'bg-[#121319]/40 border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[9px] font-mono font-semibold tracking-wider ${
+                              isSelected 
+                                ? studyStyle === 'sedaris' ? 'text-violet-400' : 'text-amber-400' 
+                                : 'text-zinc-500'
+                            }`}>
+                              {lec.lessonNum}
+                            </span>
+                            <span className="text-[8px] font-mono text-zinc-500 uppercase truncate">
+                              {lec.module.split(': ')[1] || lec.module}
+                            </span>
+                          </div>
+                          <span className="font-sans font-bold text-xs line-clamp-1 text-white/90 group-hover:text-white">
+                            {lec.title}
+                          </span>
+                          <span className="font-sans text-[10px] text-zinc-500 line-clamp-1">
+                            {lec.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer info board */}
+              <div className="p-4 bg-[#111317] border-t border-white/5 text-[10px] font-mono text-zinc-500 flex justify-between items-center bg-[#111317]">
+                <span className="flex items-center gap-1.5"><Keyboard size={12} /> Press [←] or [→] to turn pages</span>
+                <span>SPI SYSTEM</span>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

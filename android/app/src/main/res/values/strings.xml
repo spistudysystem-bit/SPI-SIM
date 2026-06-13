@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ultrasound Simulator</string>
+    <string name="title_activity_main">Ultrasound Simulator</string>
+    <string name="package_name">com.spisimulator.app</string>
+    <string name="custom_url_scheme">com.spisimulator.app</string>
+</resources>

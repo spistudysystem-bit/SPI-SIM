@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import agentSarahPortrait from '../../assets/images/agent_sarah_portrait_1781263218814.jpg';
 import { 
   Play, 
   Pause, 
@@ -922,6 +923,18 @@ export default function InteractiveUltrasoundVideoSim({ videoId, onClose }: SimP
         <div className="absolute top-4 right-4 text-right pointer-events-none select-none opacity-40">
           <div className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest">Active_Scan_Matrix</div>
           <div className="text-[10px] font-mono text-[#00d1ff] font-bold uppercase tracking-widest">SPI_ONLINE_LAB</div>
+        </div>
+
+        {/* Character Overlay */}
+        <div className="absolute bottom-6 left-6 flex items-end gap-3 z-[10] pointer-events-none drop-shadow-2xl">
+          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#00d1ff] shadow-[0_0_15px_rgba(0,209,255,0.4)] bg-black shrink-0 relative">
+            <img src={agentSarahPortrait} alt="Agent Sarah" className="w-full h-full object-cover" />
+            <div className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-black animate-pulse" />
+          </div>
+          <div className="bg-slate-900/95 backdrop-blur-sm border border-[#00d1ff]/30 p-2.5 rounded-2xl rounded-bl-none shadow-xl max-w-[220px]">
+            <p className="text-[8px] font-mono font-bold text-[#00d1ff] uppercase tracking-widest mb-0.5">Agent Sarah</p>
+            <p className="text-[10px] text-white leading-snug">Drag and interact with the parameters above. Observe how the physics engine responds!</p>
+          </div>
         </div>
       </div>
 

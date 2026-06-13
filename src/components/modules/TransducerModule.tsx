@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Video } from 'lucide-react';
+import AttachedMediaList from '../shared/AttachedMediaList';
 
 interface TransducerModuleProps {
   thickness: number;
@@ -29,6 +30,11 @@ export default function TransducerModule({
   setViewMode
 }: TransducerModuleProps) {
   const currentLayer = layers.find(l => l.id === activeLayer);
+
+  const [backingOpacity, setBackingOpacity] = React.useState<number>(1);
+  const [pztOpacity, setPztOpacity] = React.useState<number>(1);
+  const [matchingOpacity, setMatchingOpacity] = React.useState<number>(1);
+  const [lensOpacity, setLensOpacity] = React.useState<number>(1);
 
   return (
     <motion.div 
@@ -97,8 +103,9 @@ export default function TransducerModule({
               onClick={() => setActiveLayer('backing')} 
               className={`w-full h-[140px] mb-1.5 flex items-center justify-center cursor-pointer transition-all duration-500 rounded-t-lg overflow-hidden border border-white/5 ${activeLayer === 'backing' ? 'brightness-125 scale-[1.02] shadow-xl z-10' : 'brightness-50 grayscale-[0.5]'}`} 
               style={{ 
-                background: 'repeating-linear-gradient(45deg, #1a1c22, #1a1c22 4px, #24272e 4px, #24272e 8px)',
-                boxShadow: activeLayer === 'backing' ? '0 0 30px rgba(100,100,100,0.2)' : 'none'
+                background: 'repeating-linear-gradient(45deg, var(--backing-stripe), var(--backing-stripe) 4px, var(--backing-stripe-alt) 4px, var(--backing-stripe-alt) 8px)',
+                boxShadow: activeLayer === 'backing' ? '0 0 30px rgba(100,100,100,0.2)' : 'none',
+                opacity: backingOpacity
               }}
             >
               <span className="text-[8px] font-mono opacity-40 text-white uppercase tracking-[6px] font-bold">Backing Block</span>
@@ -111,7 +118,8 @@ export default function TransducerModule({
               className={`w-full mb-1.5 cursor-pointer flex items-center justify-center transition-all duration-500 relative overflow-hidden group/pzt ${activeLayer === 'pzt' ? 'brightness-110 scale-[1.02] z-20 shadow-[0_0_50px_rgba(255,215,0,0.3)]' : 'brightness-75'}`}
               style={{ 
                 background: 'linear-gradient(180deg, #ffd700 0%, #b8860b 100%)',
-                border: '1px solid rgba(255,215,0,0.4)'
+                border: '1px solid rgba(255,215,0,0.4)',
+                opacity: pztOpacity
               }}
             >
               <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '6px 6px' }} />
@@ -128,7 +136,7 @@ export default function TransducerModule({
             <div 
               onClick={() => setActiveLayer('matching')} 
               className={`w-full h-5 mb-1.5 cursor-pointer flex items-center justify-center transition-all duration-500 rounded-sm border border-[#40e0d0]/30 shadow-inner group/matching ${activeLayer === 'matching' ? 'brightness-125 scale-x-[1.04] z-10 shadow-[0_0_30px_rgba(64,224,208,0.3)]' : 'brightness-50'}`}
-              style={{ background: 'linear-gradient(90deg, #1a4d4a 0%, #40e0d0 50%, #1a4d4a 100%)' }}
+              style={{ background: 'linear-gradient(90deg, #1a4d4a 0%, #40e0d0 50%, #1a4d4a 100%)', opacity: matchingOpacity }}
             >
                <span className="text-[7px] font-bold text-black uppercase tracking-widest opacity-0 group-hover/matching:opacity-100 transition-opacity">1/4 λ Bridge</span>
             </div>
@@ -137,6 +145,7 @@ export default function TransducerModule({
             <div 
               onClick={() => setActiveLayer('lens')} 
               className={`w-full h-10 bg-gradient-to-b from-[#00d1ff]/40 to-[#00d1ff]/10 rounded-b-[40px] border-t-2 border-[#00d1ff]/40 cursor-pointer relative overflow-hidden transition-all duration-500 ${activeLayer === 'lens' ? 'brightness-125 scale-y-[1.1] origin-top' : 'brightness-50'}`}
+              style={{ opacity: lensOpacity }}
             >
                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[45deg] animate-pulse" />
             </div>
@@ -214,6 +223,36 @@ export default function TransducerModule({
               <span>{`> Based on PZT C ≈ 4.0 mm/μs. Eq: f = C / (2 * th)`}</span>
             </div>
           </div>
+
+          {/* Layer Opacity Controls */}
+          <div className="bg-[#16181d] border border-[#2d3139] p-4 rounded-xl shadow-2xl">
+            <div className="text-[9px] text-[#00d1ff] font-bold uppercase mb-3 font-mono tracking-widest">LAYER VISIBILITY / OPACITY</div>
+            <div className="flex flex-col gap-3">
+              {[
+                { label: 'Backing Block', value: backingOpacity, setter: setBackingOpacity, color: '#8e9299' },
+                { label: 'PZT Element', value: pztOpacity, setter: setPztOpacity, color: '#ffd700' },
+                { label: 'Matching Layer', value: matchingOpacity, setter: setMatchingOpacity, color: '#40e0d0' },
+                { label: 'Acoustic Lens', value: lensOpacity, setter: setLensOpacity, color: '#00d1ff' }
+              ].map((layer, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center text-[10px] uppercase font-bold text-[#8e9299]">
+                     <span style={{ color: layer.color }}>{layer.label}</span>
+                     <span>{(layer.value * 100).toFixed(0)}%</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={layer.value}
+                    onChange={(e) => layer.setter(parseFloat(e.target.value))}
+                    className="w-full h-1.5 appearance-none bg-[#0c0d10] border border-[#2d3139] rounded-full outline-none focus:border-[#00d1ff]/50 transition-colors"
+                    style={{ accentColor: layer.color }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -222,6 +261,20 @@ export default function TransducerModule({
         <div className="flex flex-col gap-1">
            <div className="text-[10px] font-mono text-[#00d1ff] tracking-[3px]">LAB_MANUAL_v2.0</div>
            <h2 className="text-3xl font-serif italic text-white leading-tight">Hardware <span className="text-[#8e9299]">Analysis</span></h2>
+        </div>
+
+        {/* AGENT MARCUS COVERT INTERCOM BRIEFING */}
+        <div className="flex items-start gap-3 bg-cyan-950/40 border border-cyan-500/20 p-4 rounded-xl relative overflow-hidden shadow-md">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-cyan-400/5 to-transparent rounded-full" />
+          <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 mt-1.5 animate-pulse shrink-0" />
+          <div className="space-y-1">
+            <div className="text-[7.5px] font-mono text-cyan-400 uppercase tracking-widest font-black leading-none">
+              AGENT MARCUS • FIELD ADVICE SYSTEM
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+              "Impedance calibration is my specialty. Check out the active layers in my interactive probe below—keeping matching layers at 1/4 wavelength thickness keeps signal reflections pristine!"
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
@@ -262,6 +315,7 @@ export default function TransducerModule({
            </div>
 
            <div className="p-5 bg-[#1a1c22]/50 border border-[#2d3139] rounded-xl flex flex-col gap-3">
+              <AttachedMediaList module="probe" />
               <div className="text-[9px] text-[#8e9299] font-bold uppercase font-mono tracking-widest">Module Summary</div>
               <ul className="flex flex-col gap-2">
                  {[

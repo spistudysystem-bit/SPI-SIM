@@ -14,9 +14,11 @@ export function useNarrator() {
   const isSpeakingRef = useRef(false);
   const currentTextRef = useRef<string | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
+  const isFallbackActiveRef = useRef(false);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
 
   // Initialize AudioContext
   useEffect(() => {
@@ -32,6 +34,14 @@ export function useNarrator() {
     };
   }, []);
 
+  const getAnalyserData = useCallback((dataArray: Uint8Array) => {
+    if (analyserRef.current && isSpeakingRef.current) {
+      analyserRef.current.getByteFrequencyData(dataArray);
+      return true;
+    }
+    return false;
+  }, []);
+
   const getHash = async (text: string) => {
     const msgUint8 = new TextEncoder().encode(text);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
@@ -40,6 +50,13 @@ export function useNarrator() {
   };
 
   const stop = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        // Safe catch
+      }
+    }
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.stop();
@@ -74,7 +91,15 @@ export function useNarrator() {
     
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(ctx.destination);
+    
+    // Connect analyser
+    if (!analyserRef.current) {
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 64;
+      analyserRef.current = analyser;
+    }
+    source.connect(analyserRef.current);
+    analyserRef.current.connect(ctx.destination);
     
     const startTime = ctx.currentTime;
     const duration = buffer.duration;
@@ -130,18 +155,109 @@ export function useNarrator() {
     }
   };
 
+  const speakFallback = useCallback((textToSpeak: string, profile?: string) => {
+    if (!('speechSynthesis' in window)) {
+      console.warn('SpeechSynthesis fallback not supported in this browser.');
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      
+      // Customize voice qualities based on professional profiles
+      if (profile === 'sedaris') {
+        utterance.pitch = 1.15;
+        utterance.rate = 1.05;
+      } else if (profile === 'bourdain') {
+        utterance.pitch = 0.85;
+        utterance.rate = 0.88;
+      } else if (profile === 'british') {
+        utterance.pitch = 1.0;
+        utterance.rate = 0.98;
+      } else {
+        utterance.pitch = 1.0;
+        utterance.rate = 1.05;
+      }
+      
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        let voice = null;
+        if (profile === 'bourdain') {
+          voice = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('google us english')));
+        } else if (profile === 'sedaris') {
+          voice = voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('google uk english') || v.name.toLowerCase().includes('female')));
+        } else if (profile === 'british') {
+          // Find British English voice specifically
+          voice = voices.find(v => v.lang.toLowerCase() === 'en-gb' || v.lang.toLowerCase().startsWith('en-gb') || v.name.toLowerCase().includes('uk') || v.name.toLowerCase().includes('british') || v.name.toLowerCase().includes('united kingdom') || v.name.toLowerCase().includes('gb') || v.name.toLowerCase().includes('serena') || v.name.toLowerCase().includes('daniel'));
+        }
+        if (!voice) {
+          voice = voices.find(v => v.lang.startsWith('en'));
+        }
+        if (voice) {
+          utterance.voice = voice;
+        }
+      }
+      
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        isSpeakingRef.current = true;
+        setProgress(0);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setProgress(100);
+      };
+      
+      utterance.onerror = (e) => {
+        console.warn('SpeechSynthesis error:', e);
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setProgress(0);
+      };
+      
+      utterance.onboundary = (event) => {
+        if (event.name === 'word') {
+          const pct = Math.min(100, (event.charIndex / textToSpeak.length) * 100);
+          setProgress(pct);
+        }
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error('SpeechSynthesis execution failed:', e);
+      setIsSpeaking(false);
+      isSpeakingRef.current = false;
+    }
+  }, []);
+
   const speak = useCallback(async (text: string, voiceProfile?: string) => {
-    if (!text || !audioContextRef.current) return;
+    if (!text) return;
 
     if (isSpeakingRef.current && currentTextRef.current === text) {
       stop();
       return;
     }
 
+    const selectedVoiceProfile = voiceProfile || localStorage.getItem('spi_narrator_voice_profile') || 'british';
+
     setCurrentText(text);
     currentTextRef.current = text;
+
+    if (isFallbackActiveRef.current) {
+      speakFallback(text, selectedVoiceProfile);
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      speakFallback(text, selectedVoiceProfile);
+      return;
+    }
+
     // Prefix hash with voice profile to cache them separately!
-    const stringToHash = voiceProfile ? `${voiceProfile}-${text}` : text;
+    const stringToHash = selectedVoiceProfile ? `${selectedVoiceProfile}-${text}` : text;
     const hash = await getHash(stringToHash);
     const cache = await caches.open(CACHE_NAME);
     
@@ -200,11 +316,16 @@ export function useNarrator() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ text, voiceProfile }),
+        body: JSON.stringify({ text, voiceProfile: selectedVoiceProfile }),
       });
       
       if (ttsResponse.ok) {
         const ttsData = await ttsResponse.json();
+        if (ttsData.useBrowserFallback) {
+          isFallbackActiveRef.current = true;
+          speakFallback(text, selectedVoiceProfile);
+          return;
+        }
         base64Audio = ttsData.base64Audio;
       } else {
         throw new Error("Failed to generate voice via server");
@@ -236,21 +357,30 @@ export function useNarrator() {
           }
           
           playBuffer(buffer);
+        } else {
+          throw new Error("PCM decoding failed");
         }
+      } else {
+        throw new Error("No audio payload returned");
       }
     } catch (error) {
-      console.error('TTS Error:', error);
-      setIsSpeaking(false);
-      isSpeakingRef.current = false;
+      console.warn('TTS Server failed, using browser SpeechSynthesis fallback:', error);
+      isFallbackActiveRef.current = true;
+      speakFallback(text, selectedVoiceProfile);
     }
-  }, [stop]);
+  }, [stop, speakFallback]);
 
   // Pre-caching utility via Server Proxy
   const preCache = useCallback(async (texts: string[], voiceProfile?: string) => {
     const cache = await caches.open(CACHE_NAME);
+    const selectedVoiceProfile = voiceProfile || localStorage.getItem('spi_narrator_voice_profile') || 'british';
     
     for (const text of texts) {
-      const stringToHash = voiceProfile ? `${voiceProfile}-${text}` : text;
+      if (isFallbackActiveRef.current) {
+        break; // Stop attempting to pre-cache via server if TTS fallback is active
+      }
+
+      const stringToHash = selectedVoiceProfile ? `${selectedVoiceProfile}-${text}` : text;
       const hash = await getHash(stringToHash);
       const cachedResponse = await cache.match(hash);
       if (cachedResponse) continue;
@@ -278,11 +408,15 @@ export function useNarrator() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text, voiceProfile }),
+          body: JSON.stringify({ text, voiceProfile: selectedVoiceProfile }),
         });
 
         if (ttsResponse.ok) {
           const ttsData = await ttsResponse.json();
+          if (ttsData.useBrowserFallback) {
+            isFallbackActiveRef.current = true;
+            break; // Stop loop immediately
+          }
           base64Audio = ttsData.base64Audio;
         }
 
@@ -306,9 +440,11 @@ export function useNarrator() {
         }
       } catch (e) {
         console.warn('Pre-cache failed for:', text.substring(0, 30), e);
+        isFallbackActiveRef.current = true;
+        break; // Stop on error
       }
     }
   }, []);
 
-  return { speak, stop, isSpeaking, progress, currentText, preCache };
+  return { speak, stop, isSpeaking, progress, currentText, preCache, getAnalyserData };
 }

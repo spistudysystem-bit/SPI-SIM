@@ -238,11 +238,11 @@ export default function PracticeModule({ setViewMode }: PracticeModuleProps) {
       {/* Top Title Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-5 gap-4">
         <div>
-          <div className="text-[10px] uppercase tracking-[6px] text-[#00d1ff] font-bold mb-1.5 flex items-center gap-1.5 font-mono">
-            <Trophy size={11} className="text-[#00d1ff]" /> Board-Readiness Calibration
+          <div className="text-[10px] uppercase tracking-[6px] text-yellow-500 font-bold mb-1.5 flex items-center gap-1.5 font-mono">
+            <Trophy size={11} className="text-yellow-500 animate-pulse" /> U.U.U. COVERT READINESS BOARDS
           </div>
-          <div className="text-2xl md:text-3.5xl font-serif italic text-white tracking-tight">
-            SPI Registry <span className="text-[#8e9299]">Exam & QBank</span>
+          <div className="text-2xl md:text-3.5xl font-black text-white tracking-tight uppercase font-mono">
+            SPI REGISTRY <span className="text-yellow-400">EXAM &amp; QBANK</span>
           </div>
         </div>
 
@@ -455,7 +455,7 @@ export default function PracticeModule({ setViewMode }: PracticeModuleProps) {
                               {h.passed ? (
                                 <span className="text-[8px] font-mono font-extrabold text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">PASS</span>
                               ) : (
-                                <span className="text-[8px] font-mono font-extrabold text-amber-500 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">FAIL</span>
+                                <span className="text-[8px] font-mono font-extrabold text-[#ffd700] px-1.5 py-0.5 rounded bg-amber-500/10 border border-[#ffd700]/20">FAIL</span>
                               )}
                             </div>
                           </div>
@@ -463,6 +463,49 @@ export default function PracticeModule({ setViewMode }: PracticeModuleProps) {
                       </div>
                     </div>
                   )}
+
+                  {/* Core Preparation Creed */}
+                  <div className="bg-gradient-to-br from-[#16181d] to-[#0e1013] border border-white/5 hover:border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col gap-4 group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#00d1ff]/5 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+                      <div className="relative flex items-center justify-center">
+                        <motion.div 
+                          animate={{ scale: [1, 1.4, 1] }} 
+                          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                          className="w-4 h-4 bg-[#00d1ff]/20 rounded-full absolute"
+                        />
+                        <motion.div 
+                          animate={{ scale: [1, 1.25, 1] }} 
+                          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                          className="w-2.5 h-2.5 bg-[#00d1ff] rounded-full absolute"
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono font-bold tracking-widest text-[#00d1ff] uppercase">
+                        OUR PREPARATION CREED
+                      </span>
+                    </div>
+
+                    <div className="space-y-4 text-center select-none py-1">
+                      <p className="text-[#00d1ff] font-sans font-black text-sm tracking-[5px] uppercase animate-pulse">
+                        STAY BREATHE.
+                      </p>
+                      
+                      <div className="space-y-1.5 font-serif text-xs md:text-[13px] text-[#e0e0e0] leading-relaxed italic">
+                        <p className="tracking-wide">YOUR ALLOWED TO MAKE MISTAKES</p>
+                        <p className="text-white font-bold text-[10px] uppercase tracking-wider font-mono not-italic mt-2">OUR JOB IS TO PREPARE YOU.</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/5 flex flex-col items-center">
+                        <span className="text-[8px] uppercase font-mono tracking-[3px] text-[#8e9299]">YOUR JOB IS TO</span>
+                        <div className="mt-2 text-xs font-serif tracking-wider leading-relaxed text-[#ffd700]">
+                          <p className="font-extrabold text-[10px] tracking-widest uppercase mb-1 font-mono">REMEMBER HOW WE FAIL YOU</p>
+                          <p className="text-white text-[10px]">SO THAT WHEN IT IS YOUR TURN</p>
+                          <p className="text-[#ffd700] font-black tracking-widest text-[11px] uppercase mt-1">YOU DO BETTER</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
               </div>

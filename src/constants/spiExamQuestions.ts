@@ -333,5 +333,75 @@ export const SPI_EXAM_QUESTIONS: SPIQuestion[] = [
     expl: "A hydrophone (or microprobe) acts as an ultra-sensitive microphone, measuring the exact pressure wave profiles, frequencies, and intensities inside an ultrasound beam.",
     category: "Safety & Bioeffects",
     domainCode: "SAFE"
+  },
+  {
+    id: "phys-05",
+    q: "An acoustic wave travels through tissue with an attenuation coefficient of 0.5 dB/cm/MHz. If a 6 MHz transducer is used to sample a structure at 4 cm depth, what is the total round-trip attenuation experienced by the echoes returning to the probe?",
+    opts: [
+      "12 dB",
+      "24 dB",
+      "48 dB",
+      "6 dB"
+    ],
+    a: 1,
+    expl: "Total attenuation = Attenuation Coefficient × Path Length × Frequency. Sound must travel down to 4 cm and back up 4 cm, making the round-trip Path Length 8 cm. Thus, total attenuation = 0.5 dB/cm/MHz × 8 cm × 6 MHz = 24 dB.",
+    category: "Physical Principles",
+    domainCode: "PHYS"
+  },
+  {
+    id: "xmtr-05",
+    q: "If a PZT crystal has an internal sound propagation speed of 4,000 m/s and its physical thickness is 0.5 mm, what is its resonant frequency?",
+    opts: [
+      "2.0 MHz",
+      "4.0 MHz",
+      "8.0 MHz",
+      "1.0 MHz"
+    ],
+    a: 1,
+    expl: "transducer crystal resonant thickness is exactly 1/2 wavelength (λ / 2 = 0.5 mm → λ = 1.0 mm or 0.001 m). Resonant Frequency (f) = speed (c) / wavelength (λ) = 4,000 m/s / 0.001 m = 4,000,000 Hz = 4.0 MHz.",
+    category: "Ultrasound Transducers",
+    domainCode: "XMTR"
+  },
+  {
+    id: "inst-06",
+    q: "An ultrasound scanner scan converter uses a 6-bit digital memory array. How many unique shades of gray can be represented within each pixel cell?",
+    opts: [
+      "12 shades",
+      "32 shades",
+      "64 shades",
+      "128 shades"
+    ],
+    a: 2,
+    expl: "In digital memory scan converters, the number of gray shades represented is 2 raised to the power of the bits: 2⁶ = 64 unique gray shades.",
+    category: "Imaging & Instrumentation",
+    domainCode: "INST"
+  },
+  {
+    id: "dopp-06",
+    q: "According to Poiseuille's Law of hemodynamics, if the radius of a blood vessel is reduced by 50% due to stenosis, what happens to the volumetric flow rate (Q) through that channel?",
+    opts: [
+      "It is reduced to 50%",
+      "It is reduced to 25%",
+      "It is reduced to 6.25%",
+      "It remains completely constant"
+    ],
+    a: 2,
+    expl: "Poiseuille's Law states that volumetric flow rate (Q) is proportional to the radius of the vessel raised to the fourth power (r⁴). If radius is cut by 50% (0.5), flow rate drops to (0.5)⁴ = 0.0625, which represents a massive 93.75% reduction (or down to 6.25% of original volumetric flow).",
+    category: "Doppler & Hemodynamics",
+    domainCode: "DOPP"
+  },
+  {
+    id: "safe-05",
+    q: "When evaluating potential tissue damage from sound waves, which ultrasound beam intensity parameter is most closely correlated with bioeffects heating?",
+    opts: [
+      "SPTP (Spatial Peak Temporal Peak)",
+      "SATA (Spatial Average Temporal Average)",
+      "SPTA (Spatial Peak Temporal Average)",
+      "SATP (Spatial Average Temporal Peak)"
+    ],
+    a: 2,
+    expl: "SPTA (Spatial Peak Temporal Average) intensity is the most relevant parameter in diagnostic ultrasound regarding thermal bioeffects (heating), since temperature rises depend on average heat accumulation deposited over time.",
+    category: "Safety & Bioeffects",
+    domainCode: "SAFE"
   }
 ];

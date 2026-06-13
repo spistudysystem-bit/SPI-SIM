@@ -1,0 +1,157 @@
+src/components/modules/AskKBModule.tsx:183:                  key={i}
+src/components/modules/AskKBModule.tsx:243:                     key={index}
+src/components/modules/D3ThirteenMicrosecondRule.tsx:543:                key={presetVal}
+src/components/modules/D3ThirteenMicrosecondRule.tsx:589:                key={sc}
+src/components/modules/TransducerModule.tsx:80:                    key={i}
+src/components/modules/TransducerModule.tsx:237:                <div key={i} className="flex flex-col gap-1.5">
+src/components/modules/TransducerModule.tsx:313:                   <li key={i} className="flex gap-3 text-[11px] text-[#8e9299]">
+src/components/modules/MockExamModule.tsx:150:                      key={q.id}
+src/components/modules/MockExamModule.tsx:197:                     key={oIdx}
+src/components/modules/MockExamModule.tsx:283:              <div key={q.id} className={`bg-[#13161c] border ${isCorrect ? 'border-emerald-500/30' : 'border-red-500/30'} rounded-2xl p-6 shadow-xl`}>
+src/components/modules/MockExamModule.tsx:322:                      <div key={oIdx} className={`p-4 border-2 rounded-xl text-sm transition-all ${style}`}>
+src/components/modules/MasterTextbook.tsx:858:            key={`standard-${activeCh}`}
+src/components/modules/MasterTextbook.tsx:879:                  <option key={ch.id} value={idx}>
+src/components/modules/MasterTextbook.tsx:1064:                        <div key={i} className="flex flex-col items-center relative">
+src/components/modules/MasterTextbook.tsx:1230:                        <div key={idx} className="flex flex-col items-center justify-between h-full w-8">
+src/components/modules/MasterTextbook.tsx:1685:                    key={pIdx} 
+src/components/modules/MasterTextbook.tsx:1749:                    <div key={qIdx} className="space-y-6">
+src/components/modules/MasterTextbook.tsx:1772:                              key={oIdx} 
+src/components/modules/MasterTextbook.tsx:1826:                     <div key={i} className={`h-1 w-4 rounded-full transition-all ${i === activeCh ? 'bg-[#00d1ff] w-8' : 'bg-white/10'}`} />
+src/components/modules/MasterTextbook.tsx:1842:            key={`${studyStyle}-${currentBourdainIndex}`}
+src/components/modules/MasterTextbook.tsx:1863:                  <option key={lesson.id} value={idx}>
+src/components/modules/MasterTextbook.tsx:1915:                    key={pIdx} 
+src/components/modules/MasterTextbook.tsx:1936:                  <li key={tIdx} className="flex gap-4 items-start text-sm sm:text-base text-[#8e9299] leading-relaxed">
+src/components/modules/MasterTextbook.tsx:1967:                       key={i} 
+src/components/modules/ImagingModule.tsx:445:                  key={step.name}
+src/components/modules/ImagingModule.tsx:1067:                    <div key={idx} className="flex items-center gap-3">
+src/components/modules/ImagingModule.tsx:1226:                          key={stamp}
+src/components/modules/PhysicsCalculatorModule.tsx:518:              key={solver.id}
+src/components/modules/PhysicsCalculatorModule.tsx:553:                  <div key={variable.symbol} className="space-y-2">
+src/components/modules/PhysicsCalculatorModule.tsx:855:                            key={i}
+src/components/modules/PhysicsCalculatorModule.tsx:998:                              key={i} 
+src/components/modules/PhysicsCalculatorModule.tsx:1148:                    key={idx}
+src/components/modules/DopplerModule.tsx:2039:                           key={mode}
+src/components/modules/DopplerModule.tsx:2433:                              key={angle}
+src/components/modules/DopplerModule.tsx:2632:                              key={speedValue}
+src/components/modules/DopplerModule.tsx:2901:                    key={p.id}
+src/components/modules/DopplerModule.tsx:2940:                 key={heartRateBPM}
+src/components/modules/DopplerModule.tsx:3154:                                key={sAngle}
+src/components/modules/DopplerModule.tsx:3354:                                   key={speedValue}
+src/components/modules/DopplerModule.tsx:3652:                          key={cat}
+src/components/modules/DopplerModule.tsx:3695:                             key={item.id}
+src/components/modules/TransducerTypesModule.tsx:88:                 key={p.id}
+src/components/modules/TransducerTypesModule.tsx:157:                                key={i} 
+src/components/modules/TransducerTypesModule.tsx:173:                                key={i} 
+src/components/modules/TransducerTypesModule.tsx:189:                                 key={i}
+src/components/modules/TransducerTypesModule.tsx:210:                                 key={i}
+src/components/modules/TransducerTypesModule.tsx:233:                                key={i} 
+src/components/modules/TransducerTypesModule.tsx:292:                                    key={i}
+src/components/modules/TransducerTypesModule.tsx:335:                                    key={i}
+src/components/modules/TransducerTypesModule.tsx:374:                                        key={i}
+src/components/modules/TransducerTypesModule.tsx:386:                                     key={i}
+src/components/modules/TransducerTypesModule.tsx:418:                                    key={i}
+src/components/modules/TransducerTypesModule.tsx:440:                                    key={i}
+src/components/modules/ArtifactsModule.tsx:142:              key={a.id}
+src/components/modules/ArtifactsModule.tsx:217:                          key={i} 
+src/components/modules/AdminModule.tsx:595:                        <option key={m.id} value={m.id}>{m.name}</option>
+src/components/modules/AdminModule.tsx:658:                        key={media.id} 
+src/components/modules/AdminModule.tsx:814:                        <tr key={user.username} className="hover:bg-white/[0.02]">
+src/components/modules/PracticeModule.tsx:365:                          <div key={k} className="flex justify-between items-center text-[10px]">
+src/components/modules/PracticeModule.tsx:445:                            key={i}
+src/components/modules/PracticeModule.tsx:583:                              key={idx}
+src/components/modules/PracticeModule.tsx:691:                                <div key={sec.code} className="space-y-1 text-xs">
+src/components/modules/PracticeModule.tsx:823:                                  key={optIdx}
+src/components/modules/PracticeModule.tsx:953:                      key={f}
+src/components/modules/SafetyModule.tsx:50:                  key={type}
+src/components/modules/SafetyModule.tsx:134:                        key={i}
+src/components/modules/LessonVisuals.tsx:482:                        <div key={idx} className="flex flex-col items-center gap-1.5">
+src/components/modules/LessonVisuals.tsx:661:                      key={opt}
+src/components/modules/InteractionsModule.tsx:87:              key={type.id}
+src/components/modules/InteractionsModule.tsx:188:                            key={`inc-front-${i}`}
+src/components/modules/InteractionsModule.tsx:217:                            key={`ref-front-${i}`}
+src/components/modules/InteractionsModule.tsx:293:                    <g key={`scat-el-${idx}`}>
+src/components/modules/InteractionsModule.tsx:301:                          key={`scat-ring-${idx}-${ring}`}
+src/components/modules/InteractionsModule.tsx:355:                      <g key={`rbc-cell-${i}`}>
+src/components/modules/InteractionsModule.tsx:378:                            key={`rayleigh-ring-${i}-${ring}`}
+src/components/modules/InteractionsModule.tsx:407:                      key={`incoming-rayl-${i}`}
+src/components/modules/InteractionsModule.tsx:479:                        key={`ref-inc-${i}`}
+src/components/modules/InteractionsModule.tsx:520:                              key={`ref-tir-${i}`}
+src/components/modules/InteractionsModule.tsx:585:                              key={`ref-refracted-${i}`}
+src/components/modules/PulsedWaveModule.tsx:155:                      <div key={i} className="flex flex-col items-center gap-2 md:gap-3 relative shrink-0">
+src/components/modules/PulsedWaveModule.tsx:173:                                   <div key={j} className="w-[1px] md:w-[2px] h-4 md:h-8 bg-white/40 rounded-full" />
+src/components/modules/AttenuationModule.tsx:85:                           key={m}
+src/components/modules/AttenuationModule.tsx:164:                   <div key={cm} className="flex flex-col items-center gap-1">
+src/components/modules/HemodynamicsModule.tsx:638:              key={p.id}
+src/components/modules/HemodynamicsModule.tsx:754:                    key={viscItem.name}
+src/components/modules/ProfileModule.tsx:917:                           key={prof.id}
+src/components/modules/ProfileModule.tsx:1105:                          key={av.id}
+src/components/modules/ProfileModule.tsx:1123:                          key={c.color}
+src/components/modules/ProfileModule.tsx:1708:                           key={idx} 
+src/components/modules/ProfileModule.tsx:1779:                        key={scan.id}
+src/components/modules/ProfileModule.tsx:1894:                              key={style}
+src/components/modules/ProfileModule.tsx:1961:                           key={idx}
+src/components/modules/AIWebSummarizerModule.tsx:328:                    key={profile.id}
+src/components/modules/AIWebSummarizerModule.tsx:484:                            key={idx}
+src/components/modules/AIWebSummarizerModule.tsx:534:                    key={record.id}
+src/components/modules/InteractiveUltrasoundVideoSim.tsx:807:                  key={mode}
+src/components/modules/InteractiveUltrasoundVideoSim.tsx:825:                  key={art.id}
+src/components/modules/VideoLibraryModule.tsx:362:            key={category}
+src/components/modules/VideoLibraryModule.tsx:436:                      key={lecture.id}
+src/components/modules/VideoLibraryModule.tsx:565:                  key={video.id}
+src/components/modules/VideoLibraryModule.tsx:653:                        key={preset.id}
+src/components/modules/VideoLibraryModule.tsx:704:                        <div key={idx} className="bg-[#0c0d10] border border-white/5 rounded-lg p-2 flex items-start justify-between gap-2">
+src/components/modules/VideoLibraryModule.tsx:839:                    key={iframeKey}
+src/components/modules/VeinArteryVisualizer.tsx:719:                  key={index}
+src/components/modules/BeamFormationModule.tsx:306:                   <div key={i} className="flex flex-col items-center gap-4 shrink-0">
+src/components/modules/BeamFormationModule.tsx:347:                       {[...Array(8)].map((_, i) => <div key={i} className={`w-1 md:w-1.5 h-2 md:h-3 rounded-sm ${i < 7 ? 'bg-[#ffb800]' : 'bg-[#2d3139]'}`} />)}
+src/components/modules/BeamFormationModule.tsx:366:                     <div key={i} className="bg-black/40 border border-white/5 p-2 rounded-lg flex flex-col gap-1 hover:border-[#00d1ff]/30 transition-colors group">
+src/components/modules/QuestStationModule.tsx:880:                    key={lvl}
+src/components/modules/QuestStationModule.tsx:933:                  key={activeSprintQuestion}
+src/components/modules/QuestStationModule.tsx:966:                        key={optIdx}
+src/components/modules/QuestStationModule.tsx:990:                <div key={mission.id} className="p-4 rounded-2xl border border-white/5 bg-black/30 flex justify-between items-center flex-wrap gap-4">
+src/components/modules/QuestStationModule.tsx:1084:                  <div key={quest.id} className="bg-black/40 border border-[#2d3139] rounded-2xl p-5 md:p-6 space-y-4">
+src/components/modules/QuestStationModule.tsx:1233:                      key={node.id} 
+src/components/modules/QuestStationModule.tsx:1279:                  key={badge.id}
+src/components/modules/QuestStationModule.tsx:1320:                    key={competitor.name}
+src/components/modules/QuestStationModule.tsx:1351:                  <div key={item.id} className="bg-black/45 border border-[#2d3139] p-3.5 rounded-2xl relative space-y-2">
+src/components/modules/RoadmapModule.tsx:596:                      key={sub.id} 
+src/components/modules/RoadmapModule.tsx:655:                      key={idx}
+src/components/modules/RoadmapModule.tsx:676:                      key={i}
+src/components/modules/RoadmapModule.tsx:906:                  key={item.id}
+src/components/modules/RoadmapModule.tsx:944:                            key={sub.id} 
+src/components/shared/PhysicsSimulations.tsx:522:              key={m}
+src/components/shared/PhysicsQuickReference.tsx:106:                  key={tab}
+src/components/shared/PhysicsQuickReference.tsx:132:                        key={idx} 
+src/components/shared/PhysicsQuickReference.tsx:201:                            <option key={m.name} value={m.name}>{m.name} ({m.z} MRayls)</option>
+src/components/shared/PhysicsQuickReference.tsx:218:                            <option key={m.name} value={m.name}>{m.name} ({m.z} MRayls)</option>
+src/components/shared/PhysicsQuickReference.tsx:284:                          <option key={m.name} value={m.name}>{m.name} (@ {m.alpha} dB/cm/MHz)</option>
+src/components/shared/NarratorPanel.tsx:93:              <g key={i} opacity={1.1 - pct}>
+src/components/shared/NarratorPanel.tsx:150:                  key={i} 
+src/components/shared/NarratorPanel.tsx:179:                  key={i}
+src/components/shared/NarratorPanel.tsx:199:                <g key={i} transform={`translate(10, ${25 + i * 9})`}>
+src/components/shared/NarratorPanel.tsx:449:              <path key={d} d={`M ${50 + d * 2.5},105 Q ${55 + d * 2.5},85 ${60 + d * 2.5},105`} fill="none" stroke="#ff4d4d" strokeWidth="2.5" />
+src/components/shared/NarratorPanel.tsx:468:                <rect key={d} x={45 + d} y={105 - h} width="4" height={h} fill="#34d399" />
+src/components/shared/NarratorPanel.tsx:512:          key={currentImage?.url || 'default'}
+src/components/shared/NarratorPanel.tsx:726:                      key={i}
+src/components/shared/NarratorPanel.tsx:762:                              key={i} 
+src/components/shared/NarratorPanel.tsx:807:                            key={i} 
+src/components/shared/NarratorPanel.tsx:885:                          key={item.id}
+src/components/shared/HUDOverlay.tsx:84:                   key={cpuLoad}
+src/components/shared/HUDOverlay.tsx:100:                 key={time.getSeconds()}
+src/components/shared/HUDOverlay.tsx:113:                   key={latency}
+src/components/shared/SidebarControls.tsx:237:                    key={type} 
+src/components/shared/SidebarControls.tsx:264:                key={zone}
+src/components/shared/SidebarControls.tsx:299:                    key={p.id}
+src/components/shared/SidebarControls.tsx:347:                                key={i}
+src/components/shared/SidebarControls.tsx:464:                      key={m.id} 
+src/components/shared/PulsedWaveDopplerGlossary.tsx:395:                  key={sect.id}
+src/components/shared/PulsedWaveDopplerGlossary.tsx:788:                    <div key={idx} className="bg-black/40 border border-white/5 rounded-xl p-4 space-y-2">
+src/components/shared/OnboardingTour.tsx:308:                key={idx}
+src/components/shared/AttachedMediaList.tsx:53:            key={media.id}
+src/App.tsx:597:            key={frequency}
+src/App.tsx:610:            key={wavelength}
+src/App.tsx:623:            key={axialRes}
+src/App.tsx:636:            key={reflectionCoeff}
+src/App.tsx:649:            key={activeMedium.name}
+src/App.tsx:688:                    <div key={catIdx} className="space-y-3">
+src/App.tsx:700:                              key={`${item.id}-${idx}`}

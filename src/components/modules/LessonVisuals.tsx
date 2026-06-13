@@ -44,6 +44,51 @@ const STATIC_ILLUSTRATIONS: Record<string, { src: string; caption: string; alt: 
     src: '/src/assets/images/ultrasound_steering_1779739933335.png',
     caption: 'Huygen\'s Wavefront: Phased delays (nanosecond offsets) combining structurally to steer the acoustic main beam.',
     alt: 'Isometric schematic illustrating phased array delay line sequences and wave constructive interference.'
+  },
+  '3-1': {
+    src: '/src/assets/images/ultrasound_depth_13us_1780312184191.png',
+    caption: 'The 13-Microsecond Rule: Round-trip flight time calculations mapping reflector depth in soft tissue to exact return times.',
+    alt: 'High-fidelity clinical diagram showing range-equation timing of ultrasound pulses.'
+  },
+  '4-1': {
+    src: '/src/assets/images/ultrasound_doppler_angle_1780312204285.png',
+    caption: 'Doppler Intercept Vector: Relationship of the angle cosine to detected blood velocity and arterial flow direction.',
+    alt: 'Vascular Doppler vector diagram explaining angle calibration constraints.'
+  },
+  '5-1': {
+    src: '/src/assets/images/ultrasound_reverberation_1780802881986.png',
+    caption: 'Acoustic Reverberation & Reflection Pathing: Shows parallel bouncing sound sheets creating linear copycat artifacts.',
+    alt: 'High-precision diagnostic diagram showing acoustic reverberation artifacting.'
+  },
+  '5-2': {
+    src: '/src/assets/images/ultrasound_artifacts_shadow_1780312223092.png',
+    caption: 'Acoustic Shadowing vs Enhancement: Highly reflective hard targets cast dark distal paths, while fluid cysts transmit energy to create distal hyper-intensity.',
+    alt: 'Medical illustration demonstrating shadowing behind calcifications and enhancement behind simple cysts.'
+  },
+  '6-1': {
+    src: '/src/assets/images/ultrasound_safety_alara_1780312243868.png',
+    caption: 'Thermal Indices (TI): Calibration model tracking localized tissue temperature rises from sound-beam power accumulation.',
+    alt: 'Safety warning dashboard modeling safe diagnostic power output indices.'
+  },
+  '6-2': {
+    src: '/src/assets/images/acoustic_cavitation_1780802894792.png',
+    caption: 'Cavitation Energy Risk: Distinguishes stable bubble oscillation from transient bubble implosion under 높은 Mechanical Index (MI > 1.0) acoustics.',
+    alt: 'Scientific medical illustration of stable versus transient pressure wave cavitation.'
+  },
+  '7-1': {
+    src: '/src/assets/images/hemodynamics_profile_1780802907527.png',
+    caption: 'Arterial Flow Hemodynamics: Distributes parabolic, laminar, and turbulent velocities through cardiac cycles.',
+    alt: 'Arterial flow profile diagram showing velocity distributions across cardiac phases.'
+  },
+  '7-2': {
+    src: '/src/assets/images/poiseuille_law_1780802919241.png',
+    caption: 'Poiseuille Law Flow Dynamics: Fluid resistance shifts exponentially as the fourth power of vessel lumen radius.',
+    alt: 'Mathematical fluid flow diagram showing stenosis resistance thresholds.'
+  },
+  '8-1': {
+    src: '/src/assets/images/calibration_phantom_1780802931022.png',
+    caption: 'Instrument Calibration Range: Evaluating transducer dead zones, vertical calipers, and spatial resolution metrics.',
+    alt: 'Industrial diagram of a diagnostic ultrasound sensor stack calibration.'
   }
 };
 
@@ -106,6 +151,16 @@ export default function LessonVisuals({ lessonId, isSedaris }: LessonVisualsProp
 
   // Widget 8-1 states
   const [caliperDeadZone, setCaliperDeadZone] = useState(1.8);
+
+  // Widget 4-2 states (Doppler Modalities)
+  const [dopplerMode, setDopplerMode] = useState<'pw' | 'cw' | 'color' | 'power'>('pw');
+  const [gateDepth, setGateDepth] = useState(6); // cm
+  const [aliasingPrf, setAliasingPrf] = useState(4); // kHz
+
+  // Widget 8-2 states (Doppler Phantom moving belt)
+  const [phantomSpeed, setPhantomSpeed] = useState(30); // cm/s
+  const [phantomAngle, setPhantomAngle] = useState(45); // degrees
+  const [dopplerAngleCorrection, setDopplerAngleCorrection] = useState(45); // degrees
 
   // Canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -266,6 +321,204 @@ export default function LessonVisuals({ lessonId, isSedaris }: LessonVisualsProp
                   Clinical Overview:
                 </strong>
                 {activeStatic.caption}
+              </p>
+            </div>
+          </div>
+        ) : (key === '4-2' || key === '8-2') ? (
+          <div className="bg-[#101216] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between">
+            <div className="p-4 border-b border-white/5 bg-[#14161c] flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[#8e9299] uppercase tracking-widest flex items-center gap-1.5 font-bold">
+                <Sparkles size={12} className={accentColor} /> High-Fidelity Physics Render
+              </span>
+              <span className="text-[10px] font-mono text-[#00d1ff] bg-[#00d1ff]/10 px-2.5 py-0.5 rounded-full">
+                Interactive SVG Active
+              </span>
+            </div>
+            
+            <div className="p-4 flex-1 flex flex-col justify-center bg-[#07080b] min-h-[240px] items-center relative">
+              {key === '4-2' ? (
+                <svg viewBox="0 0 400 220" className="w-full h-full max-h-[220px]">
+                  <defs>
+                    <pattern id="gridPattern" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="1" />
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#gridPattern)" rx="10" />
+
+                  <line x1="10" y1="50" x2="390" y2="50" stroke="#8e9299" strokeWidth="1" strokeDasharray="3 3" />
+                  <text x="330" y="42" fill="#8e9299" className="text-[9px] font-mono">SKIN LINE</text>
+
+                  {dopplerMode === 'cw' && (
+                    <>
+                      <rect x="150" y="10" width="40" height="25" rx="2" fill="#1f2937" stroke="#10b981" strokeWidth="1.5" />
+                      <text x="170" y="25" textAnchor="middle" fill="#10b981" className="text-[9px] font-bold font-mono">TX</text>
+                      <rect x="210" y="10" width="40" height="25" rx="2" fill="#1f2937" stroke="#3b82f6" strokeWidth="1.5" />
+                      <text x="230" y="25" textAnchor="middle" fill="#3b82f6" className="text-[9px] font-bold font-mono">RX</text>
+
+                      <polygon points="170,35 110,210 210,210" fill="rgba(16, 185, 129, 0.08)" stroke="rgba(16, 185, 129, 0.2)" strokeDasharray="2 2" />
+                      <polygon points="230,35 190,210 290,210" fill="rgba(59, 130, 246, 0.08)" stroke="rgba(59, 130, 246, 0.2)" strokeDasharray="2 2" />
+
+                      <polygon points="200,80 180,123 220,123" fill="rgba(239, 68, 68, 0.25)" stroke="#ef4444" strokeWidth="1" />
+                      <text x="200" y="110" textAnchor="middle" fill="#ef4444" className="text-[9px] font-bold font-mono animate-pulse">RANGE AMBIGUITY ZONE</text>
+                      <circle cx="200" cy="115" r="4" fill="#ef4444" />
+
+                      <text x="15" y="185" fill="#8e9299" className="text-[8px] font-mono">CW mode: Continuous transmission</text>
+                      <text x="15" y="200" fill="#8e9299" className="text-[8px] font-mono">Unbound high velocity, but no range gating</text>
+                    </>
+                  )}
+
+                  {dopplerMode === 'pw' && (
+                    <>
+                      <rect x="175" y="10" width="50" height="25" rx="2" fill="#1f2937" stroke="#fbbf24" strokeWidth="1.5" />
+                      <text x="200" y="25" textAnchor="middle" fill="#fbbf24" className="text-[9px] font-bold font-mono">TX / RX</text>
+
+                      <polygon points="200,35 150,210 250,210" fill="rgba(251, 191, 36, 0.05)" stroke="rgba(251, 191, 36, 0.15)" />
+
+                      {(() => {
+                        const gateY = 50 + (gateDepth - 3) * (140 / 7);
+                        return (
+                          <g>
+                            <rect x="180" y={gateY - 6} width="40" height="12" rx="1" fill="rgba(0, 191, 255, 0.15)" stroke="#00d1ff" strokeWidth="1.5" strokeDasharray="3 1" />
+                            <text x="230" y={gateY + 4} fill="#00d1ff" className="text-[9px] font-bold font-mono">Gate Box ({gateDepth} cm)</text>
+                            <path d={`M 190 ${gateY - 20} Q 200 ${gateY - 15} 210 ${gateY - 20} T 220 ${gateY - 20}`} fill="none" stroke="#fbbf24" strokeWidth="2.5" className="animate-pulse" />
+                            <text x="15" y="185" fill="#8e9299" className="text-[8px] font-mono">PW mode: Alternates pulses to resolve depth</text>
+                            <text x="15" y="200" fill="#8e9299" className="text-[8px] font-mono">Calculates distance via roundtrip flight time</text>
+                            {aliasingPrf < 4 && (
+                              <text x="15" y="212" fill="#ff453a" className="text-[8px] font-bold font-mono">⚠️ LOW Nyquist Limit: Signal wrapper risk!</text>
+                            )}
+                          </g>
+                        );
+                      })()}
+                    </>
+                  )}
+
+                  {dopplerMode === 'color' && (
+                    <>
+                      <rect x="175" y="10" width="50" height="25" rx="2" fill="#1f2937" stroke="#ec4899" strokeWidth="1.5" />
+                      <text x="200" y="25" textAnchor="middle" fill="#ec4899" className="text-[9px] font-bold font-mono">COLOR SCAN</text>
+
+                      <polygon points="200,35 100,210 300,210" fill="none" stroke="rgba(236, 72, 153, 0.15)" />
+
+                      <rect x="50" y="110" width="300" height="40" rx="4" fill="rgba(255, 255, 255, 0.02)" stroke="rgba(255, 255, 255, 0.08)" />
+                      
+                      <g>
+                        <path d="M 80 130 L 320 130" stroke="rgba(255,255,255,0.15)" strokeWidth="4" strokeDasharray="5 5" />
+                        
+                        <circle cx="120" cy="130" r="10" fill="rgba(239, 68, 68, 0.7)" stroke="#f87171" strokeWidth="1" />
+                        <text x="120" y="133" textAnchor="middle" fill="#ffffff" className="text-[7.5px] font-bold font-mono">TOWARD</text>
+
+                        <line x1="200" y1="35" x2="200" y2="210" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeDasharray="3 3"/>
+                        <circle cx="200" cy="130" r="9" fill="#111827" stroke="#ef4444" strokeWidth="1" strokeDasharray="2 2" />
+                        <text x="194" y="133" fill="#ffffff" className="text-[7.5px] font-mono">90°</text>
+
+                        <circle cx="280" cy="130" r="10" fill="rgba(59, 130, 246, 0.7)" stroke="#60a5fa" strokeWidth="1" />
+                        <text x="280" y="133" textAnchor="middle" fill="#ffffff" className="text-[7.5px] font-bold font-mono">AWAY</text>
+
+                        <text x="15" y="190" fill="#ec4899" className="text-[8.5px] font-bold font-mono">BART: Blue Away, Red Toward</text>
+                        <text x="15" y="202" fill="#8e9299" className="text-[8px] font-mono">Gives full spatial mapping of flow parameters</text>
+                      </g>
+                    </>
+                  )}
+
+                  {dopplerMode === 'power' && (
+                    <>
+                      <rect x="175" y="10" width="50" height="25" rx="2" fill="#1f2937" stroke="#f59e0b" strokeWidth="1.5" />
+                      <text x="200" y="25" textAnchor="middle" fill="#f59e0b" className="text-[9px] font-bold font-mono">POWER MAP</text>
+
+                      <rect x="50" y="110" width="300" height="50" rx="6" fill="rgba(245, 158, 11, 0.03)" stroke="rgba(245, 158, 11, 0.1)" />
+
+                      <g>
+                        <circle cx="100" cy="135" r="14" fill="rgba(245, 158, 11, 0.35)" />
+                        <circle cx="140" cy="135" r="15" fill="rgba(245, 158, 11, 0.45)" />
+                        <circle cx="180" cy="135" r="16" fill="rgba(245, 158, 11, 0.55)" />
+                        <circle cx="220" cy="135" r="16" fill="rgba(245, 158, 11, 0.55)" />
+                        <circle cx="260" cy="135" r="15" fill="rgba(245, 158, 11, 0.45)" />
+                        <circle cx="300" cy="135" r="14" fill="rgba(245, 158, 11, 0.35)" />
+
+                        <path d="M 80 135 H 320" stroke="#f59e0b" strokeWidth="2" strokeDasharray="3 3" />
+                        <text x="200" y="139" textAnchor="middle" fill="#ffffff" className="text-[9px] font-black font-mono">AMPLITUDE ONLY (NO DIRECTION)</text>
+                        <text x="15" y="190" fill="#f59e0b" className="text-[8.5px] font-mono">Power mode tracks echo amplitude for superb slow-flow counts</text>
+                        <text x="15" y="202" fill="#8e9299" className="text-[8px] font-mono">No aliasing possible, completely direction blind</text>
+                      </g>
+                    </>
+                  )}
+                </svg>
+              ) : (
+                <svg viewBox="0 0 400 220" className="w-full h-full max-h-[220px]">
+                  <defs>
+                    <pattern id="gridPattern82" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="1" />
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#gridPattern82)" rx="10" />
+
+                  <rect x="20" y="60" width="360" height="150" rx="6" fill="rgba(245, 158, 11, 0.02)" stroke="rgba(245, 158, 11, 0.15)" strokeWidth="1.5" />
+                  <text x="30" y="75" fill="rgba(245, 158, 11, 0.45)" className="text-[8px] font-mono tracking-widest font-bold">DOPPLER PHANTOM (MOVING PLATFORM)</text>
+
+                  <rect x="20" y="140" width="360" height="26" rx="2" fill="rgba(255, 255, 255, 0.02)" stroke="rgba(255,255,255,0.06)" />
+                  <line x1="20" y1="153" x2="380" y2="153" stroke="rgba(255,255,255,0.2)" strokeWidth="3" strokeDasharray="10 5" />
+
+                  <path d="M 220 153 L 260 153" stroke="#ffd700" strokeWidth="2.5" />
+                  <polygon points="260,149 268,153 260,157" fill="#ffd700" />
+                  <text x="210" y="174" fill="#ffd700" className="text-[8.5px] font-mono font-bold">Flow Belt Speed: {phantomSpeed} cm/s</text>
+
+                  {(() => {
+                    const rad = (phantomAngle * Math.PI) / 180;
+                    const beamLength = 80; 
+                    const txX = 200 - beamLength * Math.cos(rad);
+                    const txY = 153 - beamLength * Math.sin(rad);
+                    const txRotation = 180 - phantomAngle;
+                    const isCorrectlyAligned = phantomAngle === dopplerAngleCorrection;
+
+                    return (
+                      <g>
+                        <line x1={txX} y1={txY} x2={200} y2={153} stroke="#00d1ff" strokeWidth="2" strokeDasharray="3 2" className="animate-pulse" />
+                        
+                        <g transform={`translate(${txX}, ${txY}) rotate(${txRotation})`}>
+                          <rect x="-12" y="-24" width="24" height="24" rx="2" fill="#1f2937" stroke="#8e9299" strokeWidth="1" />
+                          <rect x="-8" y="-3" width="16" height="5" fill="#00d1ff" />
+                        </g>
+
+                        <circle cx="200" cy="153" r="3" fill="#00d1ff" />
+                        <path d={`M ${200 - 25} 153 A 25 25 0 0 1 ${200 - 25 * Math.cos(rad)} ${153 - 25 * Math.sin(rad)}`} fill="none" stroke="#00d1ff" strokeWidth="1.5" />
+                        <text x="145" y="142" fill="#00d1ff" className="text-[8.5px] font-bold font-mono">θ = {phantomAngle}°</text>
+
+                        {phantomAngle !== 90 && (
+                          <g>
+                            <line 
+                              x1={200 - 45 * Math.cos(dopplerAngleCorrection * Math.PI / 180)} 
+                              y1={153 - 45 * Math.sin(dopplerAngleCorrection * Math.PI / 180)} 
+                              x2={200 + 45 * Math.cos(dopplerAngleCorrection * Math.PI / 180)} 
+                              y2={153} 
+                              stroke={isCorrectlyAligned ? '#10b981' : '#ff453a'} 
+                              strokeWidth="1.5" 
+                              strokeDasharray="3 2" 
+                            />
+                            <text 
+                              x="220" 
+                              y="125" 
+                              fill={isCorrectlyAligned ? '#10b981' : '#ff453a'} 
+                              className="text-[8.5px] font-bold font-mono"
+                            >
+                              {isCorrectlyAligned ? '✓ Cursor Aligned' : '⚠️ Misaligned'}
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })()}
+                </svg>
+              )}
+            </div>
+            
+            <div className="p-5 bg-[#0e1014] border-t border-white/5">
+              <p className="text-xs text-[#8e9299] leading-relaxed italic">
+                <strong className="text-white not-italic font-sans uppercase text-[10px] tracking-wide block mb-1">
+                  Clinical Overview:
+                </strong>
+                {key === '4-2' 
+                  ? 'Comparative Doppler Scopes: Demonstrating continuous wave range chaos, pulsed wave gating capabilities, BART color mapping direction shifts, and power mode amplitude intensity tracing.'
+                  : 'Qualitative Calibration: Verifying actual velocity outputs against insonation angle cosine calculation corrections on the QA phantom flow line.'}
               </p>
             </div>
           </div>
@@ -828,6 +1081,195 @@ export default function LessonVisuals({ lessonId, isSedaris }: LessonVisualsProp
               </div>
             )}
 
+            {key === '4-2' && (
+              <div className="space-y-4 w-full">
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {(['pw', 'cw', 'color', 'power'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setDopplerMode(mode)}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold font-mono transition-all uppercase tracking-wider ${
+                        dopplerMode === mode 
+                          ? `${btnTheme} text-white border-transparent` 
+                          : 'bg-white/5 border-white/10 text-[#8e9299] hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {mode} Mode
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bg-[#0c0d12] border border-white/5 p-4 rounded-xl space-y-1">
+                  <span className="text-[10px] text-[#8e9299] uppercase tracking-widest font-mono block">Clinical Diagnostic Readout</span>
+                  <div className="text-xs text-white leading-relaxed font-sans mt-1">
+                    {dopplerMode === 'cw' && (
+                      <span className="text-emerald-400 font-bold">Continuous Wave: Range ambiguity active. High speed velocity flow (up to 600 cm/s) resolved with zero limits (No Aliasing).</span>
+                    )}
+                    {dopplerMode === 'pw' && (
+                      <span>
+                        <span className="text-yellow-400 font-bold">Pulsed Wave Gate: </span> 
+                        Depth gating set at {gateDepth} cm. Nyquist Limit is { (aliasingPrf / 2).toFixed(1) } kHz. Flow exceeding this will wrap around the spectrum!
+                      </span>
+                    )}
+                    {dopplerMode === 'color' && (
+                      <span className="text-pink-400 font-bold">Color Flow Scan: BART protocol (Blue Away, Red Toward). Real-time frequency shift maps spatial blood vessels visually.</span>
+                    )}
+                    {dopplerMode === 'power' && (
+                      <span className="text-amber-500 font-bold font-mono">Power Doppler: Energy / Amplitude tracking only. Exquisite microbubble vascular perfusion without direction indicators.</span>
+                    )}
+                  </div>
+                </div>
+
+                {dopplerMode === 'pw' && (
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#8e9299]">Sample Volume Gate Depth</span>
+                        <span className="text-white font-mono font-bold">{gateDepth} cm</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="3" 
+                        max="10" 
+                        step="1"
+                        value={gateDepth} 
+                        onChange={e => setGateDepth(parseInt(e.target.value))}
+                        className={`w-full ${sliderTheme} cursor-pointer`}
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[#8e9299]">Pulse Repetition Frequency (PRF)</span>
+                        <span className="text-white font-mono font-bold">{aliasingPrf} kHz</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="2" 
+                        max="8" 
+                        step="1"
+                        value={aliasingPrf} 
+                        onChange={e => setAliasingPrf(parseInt(e.target.value))}
+                        className={`w-full ${sliderTheme} cursor-pointer`}
+                      />
+                      <div className="flex justify-between text-[10px] text-[#8e9299] font-mono">
+                        <span>Low PRF (High Aliasing Risk)</span>
+                        <span>High PRF (High Nyquist Limit)</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {key === '8-2' && (
+              <div className="space-y-4 w-full">
+                {(() => {
+                  const rad = (phantomAngle * Math.PI) / 180;
+                  const cosVal = Math.cos(rad);
+                  const measuredNoCorr = phantomSpeed * cosVal;
+                  const corrRad = (dopplerAngleCorrection * Math.PI) / 180;
+                  const corrCos = Math.cos(corrRad);
+                  const isPerfect = phantomAngle === dopplerAngleCorrection;
+                  const safeCorrCos = Math.max(0.01, corrCos);
+                  const measuredWithCorr = measuredNoCorr / safeCorrCos;
+                  const isBlackout = phantomAngle === 90;
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-[#0c0d12] border border-white/5 p-3 rounded-xl text-center space-y-1">
+                          <span className="text-[9px] text-[#8e9299] uppercase tracking-widest font-mono block">True Phantom Speed</span>
+                          <div className="text-lg font-bold text-yellow-400 font-mono">{phantomSpeed} cm/s</div>
+                        </div>
+                        <div className="bg-[#0c0d12] border border-white/5 p-3 rounded-xl text-center space-y-1">
+                          <span className="text-[9px] text-[#8e9299] uppercase tracking-widest font-mono block">System Measured Readout</span>
+                          <div className={`text-lg font-bold font-mono ${isBlackout ? 'text-red-500 animate-pulse' : isPerfect ? 'text-emerald-400' : 'text-rose-500'}`}>
+                            {isBlackout ? '0.0 cm/s' : `${measuredWithCorr.toFixed(1)} cm/s`}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#0c0d12] border border-white/5 p-3 rounded-xl space-y-1">
+                        <span className="text-[10px] text-[#8e9299] uppercase tracking-widest font-mono block">Cosine Geometry Math</span>
+                        <div className="text-xs text-[#8e9299] font-mono leading-relaxed mt-1">
+                          <div>Beam θ Cosine: cos({phantomAngle}°) = {cosVal.toFixed(3)}</div>
+                          <div>Operator Correction: cos({dopplerAngleCorrection}°) = {corrCos.toFixed(3)}</div>
+                          <div className="border-t border-[#ffffff]/5 pt-1 mt-1 text-white">
+                            {isBlackout ? (
+                              <span className="text-rose-400 font-bold font-sans">⚠️ 90° drop: complete academic blackout, zero Doppler shift!</span>
+                            ) : isPerfect ? (
+                              <span className="text-emerald-400 font-bold font-sans">✓ Perfect Match! Calibration error reduces to zero. Output reads {phantomSpeed} cm/s.</span>
+                            ) : (
+                              <span className="text-rose-400 font-bold font-sans">⚠️ Caliper Alignment Fault! Speed skew: {Math.abs(measuredWithCorr - phantomSpeed).toFixed(1)} cm/s!</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#8e9299]">Physical Belt Speed</span>
+                          <span className="text-white font-mono font-bold">{phantomSpeed} cm/s</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="15" 
+                          max="60" 
+                          step="5"
+                          value={phantomSpeed} 
+                          onChange={e => setPhantomSpeed(parseInt(e.target.value))}
+                          className={`w-full ${sliderTheme} cursor-pointer`}
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-[#8e9299]">Physical Insonation Angle (θ)</span>
+                          <span className="text-white font-mono font-bold">{phantomAngle}°</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="90" 
+                          step="15"
+                          value={phantomAngle} 
+                          onChange={e => setPhantomAngle(parseInt(e.target.value))}
+                          className={`w-full ${sliderTheme} cursor-pointer`}
+                        />
+                        <div className="flex justify-between text-[9px] text-[#8e9299] font-mono">
+                          <span>0° (Parallel)</span>
+                          <span>90° (Perpendicular)</span>
+                        </div>
+                      </div>
+
+                      {phantomAngle !== 90 && (
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-[#8e9299]">Caliper Angle Correction (θ)</span>
+                            <span className="text-[#00d1ff] font-mono font-bold">{dopplerAngleCorrection}°</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="80" 
+                            step="5"
+                            value={dopplerAngleCorrection} 
+                            onChange={e => setDopplerAngleCorrection(parseInt(e.target.value))}
+                            className={`w-full ${sliderTheme} cursor-pointer`}
+                          />
+                          <div className="flex justify-between text-[9px] text-[#8e9299] font-mono">
+                            <span>0° Correction</span>
+                            <span>80° Correction</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
           </div>
 
           <div className="p-4 bg-[#14161c] border-t border-white/5 flex gap-2 text-[10.5px] text-[#8e9299] items-center">
@@ -839,6 +1281,7 @@ export default function LessonVisuals({ lessonId, isSedaris }: LessonVisualsProp
                {key === '2-2' && 'Slide array angle. The phased delays represent actual sub-microsecond voltage lags.'}
                {key === '3-1' && 'Firing sound at targets computes exact roundtrip flight (T) at 13 microseconds per cm.'}
                {key === '4-1' && 'Cosine factor calculates relative frequency shifts based on blood direction angles.'}
+               {key === '4-2' && 'Toggle modes: PW targets depth gate settings, CW measures unlimited speed velocity profiles, BART colors spatial map direction.'}
                {key === '5-1' && 'Select different types of specular artifacts to see trace diagrams.'}
                {key === '5-2' && 'Adjust target type. Observe diagnostic acoustic shadows vs bright cystic enhancements.'}
                {key === '6-1' && 'Increasing power increases Thermal Index (TI) exposure. Keep as low as possible (ALARA).'}
@@ -846,6 +1289,7 @@ export default function LessonVisuals({ lessonId, isSedaris }: LessonVisualsProp
                {key === '7-1' && 'Compare waveforms to see systolic/diastolic ratios (RI).'}
                {key === '7-2' && 'Poiseuille 4th-power is why a tiny stenosis area creates massive resistance changes.'}
                {key === '8-1' && 'The unresolvable field at the top where crystal ringing makes objects invisible.'}
+               {key === '8-2' && 'Adjust the steering angle and correction caliper to see how math errors distort real-time velocity calculations!'}
             </span>
           </div>
         </div>

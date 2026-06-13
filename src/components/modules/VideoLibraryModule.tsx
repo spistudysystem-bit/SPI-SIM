@@ -21,11 +21,16 @@ import {
   RefreshCw,
   ChevronLeft,
   ExternalLink,
-  Compass
+  Compass,
+  Download,
+  FileDown
 } from 'lucide-react';
 import { VIDEOS } from '../../constants';
-import { LECTURES } from '../../constants/lectures';
+import { LECTURES, LectureScript } from '../../constants/lectures';
+import { generateStyledHTML, generateStructuredMarkdown } from '../../utils/lectureExporter';
 import InteractiveUltrasoundVideoSim from './InteractiveUltrasoundVideoSim';
+import AttachedMediaList from '../shared/AttachedMediaList';
+import PulsedWaveDopplerGlossary from '../shared/PulsedWaveDopplerGlossary';
 
 const SONOWORLD_PRESETS = [
   {
@@ -73,6 +78,7 @@ const SONOWORLD_PRESETS = [
 ];
 
 const HIGH_YIELD_TERMS = [
+  { term: "Pulsed-Wave Doppler", def: "Exploring the Dynamics of Blood Flow. Pulsed-wave Doppler integrates range-gated pulse-echo timings to profile localized blood velocities. Click to interact with the full simulation and clinical syllabus guide." },
   { term: "Nyquist Limit", def: "In Doppler imaging, the maximum frequency shift that can be measured without aliasing, equal to PRF/2." },
   { term: "Spectral Broadening", def: "A widening of the Doppler spectral wave, indicating turbulent, multi-directional flow, common in stenosis." },
   { term: "Acoustic Impedance", def: "Resistance of a medium to sound wave propagation. Difference in impedance causes reflections." },
@@ -105,6 +111,51 @@ export default function VideoLibraryModule({
   const [userStudyNotes, setUserStudyNotes] = useState<string>(() => {
     return localStorage.getItem('spi_sonoworld_study_notes') || "";
   });
+
+  // Export State System
+  const [showExporterModal, setShowExporterModal] = useState(false);
+  const [exporterSelectedLecture, setExporterSelectedLecture] = useState<LectureScript | null>(null);
+  const [exporterTheme, setExporterTheme] = useState<'cosmic' | 'minimalist'>('cosmic');
+  const [exporterFormat, setExporterFormat] = useState<'html' | 'md'>('html');
+  const [exporterScope, setExporterScope] = useState<'single' | 'all'>('single');
+
+  const triggerDownloadExport = () => {
+    if (exporterScope === 'single' && !exporterSelectedLecture) return;
+
+    const op = {
+      theme: exporterTheme,
+      combine: exporterScope === 'all',
+      selectedLectureId: exporterSelectedLecture?.id
+    };
+
+    let filename = '';
+    let content = '';
+    let mimeType = '';
+
+    if (exporterFormat === 'html') {
+      content = generateStyledHTML(LECTURES, op);
+      filename = exporterScope === 'all' 
+        ? 'SPI_Master_Study_Binder.html' 
+        : `Lecture_${exporterSelectedLecture?.id}_Study_Guide.html`;
+      mimeType = 'text/html';
+    } else {
+      content = generateStructuredMarkdown(LECTURES, op);
+      filename = exporterScope === 'all' 
+        ? 'SPI_Master_Study_Notebook.md' 
+        : `Lecture_${exporterSelectedLecture?.id}_Study_Sheet.md`;
+      mimeType = 'text/markdown';
+    }
+
+    const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExporterModal(false);
+  };
 
   const renderVideoThumbnailCover = (id: string) => {
     switch (id) {
@@ -243,14 +294,26 @@ export default function VideoLibraryModule({
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4 sm:p-8 gap-6 sm:gap-8 overflow-y-auto custom-scrollbar relative hud-dots bg-[#0c0d10]">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10">
+    <div className="flex-1 flex flex-col p-4 sm:p-8 gap-6 sm:gap-8 overflow-y-auto custom-scrollbar relative bg-[#0c0d10]">
+      {/* Background visual atmosphere */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(234,179,8,0.02),transparent_40%)] pointer-events-none" />
+
+      {/* Header with tactical live sync and hazard styled subtitle */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 z-10 border-b border-white/5 pb-4">
         <div className="flex flex-col gap-1">
-          <div className="text-[10px] font-mono text-[#00d1ff] tracking-[3px]">AUDIO_VISUAL_DB_01</div>
-          <h1 className="text-2xl sm:text-3xl font-serif italic text-white">Clinical &amp; <span className="text-[#00d1ff]">Lecture</span> Library</h1>
-          <p className="text-[11px] text-[#8e9299] uppercase tracking-widest max-w-xl mt-1.5 font-medium opacity-70">
-            A comprehensive reference database compiling dynamic sound propagation videos and high-fidelity narrations.
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-mono font-black tracking-widest text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 uppercase leading-none">
+              U.U.U. SPEC-OPS BANDWIDTH
+            </span>
+            <span className="text-[8px] font-mono text-cyan-400 bg-cyan-400/5 px-2 py-0.5 rounded border border-cyan-400/20 uppercase">
+              STUDY DECK SECURE
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight mt-1 font-mono">
+            SONOGRAPHY <span className="text-yellow-400">SONGS &amp; LECTURES</span>
+          </h1>
+          <p className="text-[11px] text-[#8e9299] uppercase tracking-widest max-w-xl mt-1.5 font-medium leading-relaxed font-sans">
+            Clandestine audio-visual directory, exam-focused outline lectures, and clinical ultrasound soundtracks.
           </p>
         </div>
         
@@ -304,6 +367,7 @@ export default function VideoLibraryModule({
       </div>
 
       {/* Category Tabs */}
+      <AttachedMediaList module="library" />
       <div className="flex flex-wrap gap-2 sm:gap-3 z-10">
         {activeCategories.map((category) => (
           <button
@@ -323,121 +387,181 @@ export default function VideoLibraryModule({
       {/* Main Content Display Grid */}
       <AnimatePresence mode="wait">
         {libraryTab === 'narratives' ? (
-          <motion.div 
-            key="narratives"
-            variants={container}
-            initial="hidden"
-            animate="show"
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 z-10 pb-20"
-          >
-            {filteredLectures.length > 0 ? (
-              filteredLectures.map((lecture) => {
-                const wordsCount = lecture.script.split(/\s+/).filter(Boolean).length;
-                const readTimeMinutes = Math.max(1, Math.ceil(wordsCount / 140));
-                const synopsis = lecture.script.trim().replace(/\s+/g, ' ').substring(0, 130) + '...';
-                const isCurrentLecture = activeLectureId === lecture.id;
-                const isCurrentPlaying = isCurrentLecture && isSpeaking;
-
-                return (
-                  <motion.div
-                    key={lecture.id}
-                    variants={item}
-                    whileHover={{ y: -4 }}
-                    className={`bg-[#16181d] border ${isCurrentPlaying ? 'border-[#00d1ff] shadow-[0_0_30px_rgba(0,195,255,0.15)]' : 'border-[#2d3139]'} rounded-xl p-5 flex flex-col justify-between hover:border-white/10 group transition-all duration-300 shadow-md`}
-                  >
-                    <div className="space-y-4">
-                      {/* Top badges */}
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2.5 py-1 text-[9px] font-mono font-bold tracking-widest uppercase rounded border ${getCategoryColor(lecture.category)}`}>
-                          {lecture.category}
-                        </span>
-                        
-                        <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#8e9299]">
-                          <Clock size={11} />
-                          <span>{readTimeMinutes} MIN</span>
-                        </div>
-                      </div>
-
-                      {/* Title & Synopsis */}
-                      <div className="space-y-2">
-                        <h3 className="text-base font-bold text-white group-hover:text-[#00d1ff] transition-colors leading-snug">
-                          {lecture.title}
-                        </h3>
-                        <p className="text-xs text-[#8e9299] leading-relaxed italic line-clamp-3">
-                          "{synopsis}"
-                        </p>
-                      </div>
-
-                      {/* Specs */}
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.02] border border-white/5 rounded text-[9px] font-mono text-[#8e9299]">
-                          <HelpCircle size={10} className="text-emerald-500" />
-                          <span>{lecture.assessment.length} ASSESSMENT Qs</span>
-                        </div>
-                        {lecture.images && lecture.images.length > 0 && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.02] border border-white/5 rounded text-[9px] font-mono text-[#8e9299]">
-                            <Activity size={10} className="text-[#00d1ff]" />
-                            <span>{lecture.images.length} SYNC DIAGRAMS</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bottom Playback trigger */}
-                    <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
-                      <div className="text-[8px] font-mono text-[#8e9299] uppercase tracking-widest">
-                        REGISTRY_SCRIPT_NATIVE
-                      </div>
-                      
-                      {speak ? (
-                        <button
-                          onClick={() => {
-                            if (isCurrentPlaying) {
-                              stopSpeaking?.();
-                            } else {
-                              speak(lecture.script, lecture.id);
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${isCurrentPlaying ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500' : 'bg-[#00d1ff]/10 border-[#00d1ff]/30 text-[#00d1ff] hover:bg-[#00d1ff] hover:text-black hover:border-[#00d1ff]'}`}
-                        >
-                          {isCurrentPlaying ? (
-                            <>
-                              <VolumeX size={12} className="animate-pulse" />
-                              <span>Stop Lecture</span>
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 size={12} />
-                              <span>Listen &amp; Practice</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="text-[10px] text-amber-500/75 italic">
-                          Click from top header
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })
-            ) : (
-              <div className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-[#2d3139] rounded-lg">
-                <ShieldAlert size={48} className="text-[#8e9299] mb-4 opacity-50" />
-                <div className="text-[10px] font-mono text-[#8e9299] tracking-widest uppercase">No lectures matches search criteria</div>
-                <button 
-                  onClick={() => {
-                    setSelectedCategory('ALL');
-                    setSearchTerm('');
-                  }}
-                  className="mt-6 px-4 py-2 text-[10px] font-mono text-[#00d1ff] border border-[#00d1ff]/30 rounded hover:bg-[#00d1ff]/10 transition-all uppercase tracking-widest"
-                >
-                  Reset Filters
-                </button>
+          <div className="flex flex-col gap-6 z-10 pb-20 w-full">
+            {/* Master Study Binder Compilation Banner */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-slate-900/90 via-[#181b24] to-slate-900/95 border border-[#00d1ff]/25 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-[#00d1ff]/15 flex items-center justify-center border border-[#00d1ff]/25 shrink-0">
+                  <FileDown size={22} className="text-[#00d1ff] animate-pulse" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[9px] bg-amber-400/10 text-amber-400 font-mono font-bold px-2 py-0.5 rounded border border-amber-400/20 uppercase tracking-wider">
+                      ★ HIGH YIELD REGISTER
+                    </span>
+                    <span className="text-[10px] text-[#8e9299] font-mono">11 MODULE REVIEWS COMPLETE</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white tracking-tight">Full-Scope ARDMS SPI Master Review Handbook</h3>
+                  <p className="text-xs text-[#8e9299] leading-normal max-w-xl">
+                    Compile all study lecture scripts, mnemonics keywords, and 20+ self-assessment quiz parameters into one interactive PDF-ready digital booklet.
+                  </p>
+                </div>
               </div>
-            )}
-          </motion.div>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setExporterSelectedLecture(null);
+                  setExporterScope('all');
+                  setShowExporterModal(true);
+                }}
+                className="w-full md:w-auto px-5 py-3 bg-[#00d1ff] text-black hover:bg-[#00b2db] hover:scale-[1.02] text-[10.5px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-[0_0_20px_rgba(0,209,255,0.25)]"
+              >
+                <Download size={14} />
+                <span>Compile MASTER Study Binder</span>
+              </button>
+            </motion.div>
+
+            {/* Individual Lecture Cards Grid */}
+            <motion.div 
+              key="narratives"
+              variants={container}
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredLectures.length > 0 ? (
+                filteredLectures.map((lecture) => {
+                  const wordsCount = lecture.script.split(/\s+/).filter(Boolean).length;
+                  const readTimeMinutes = Math.max(1, Math.ceil(wordsCount / 140));
+                  const synopsis = lecture.script.trim().replace(/\s+/g, ' ').substring(0, 130) + '...';
+                  const isCurrentLecture = activeLectureId === lecture.id;
+                  const isCurrentPlaying = isCurrentLecture && isSpeaking;
+
+                  return (
+                    <motion.div
+                      key={lecture.id}
+                      variants={item}
+                      whileHover={{ y: -4 }}
+                      className={`bg-[#16181d] border ${isCurrentPlaying ? 'border-[#00d1ff] shadow-[0_0_30px_rgba(0,195,255,0.15)]' : 'border-[#2d3139]'} rounded-xl p-5 flex flex-col justify-between hover:border-white/10 group transition-all duration-300 shadow-md`}
+                    >
+                      <div className="space-y-4">
+                        {/* Top badges */}
+                        <div className="flex items-center justify-between">
+                          <span className={`px-2.5 py-1 text-[9px] font-mono font-bold tracking-widest uppercase rounded border ${getCategoryColor(lecture.category)}`}>
+                            {lecture.category}
+                          </span>
+                          
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono text-[#8e9299]">
+                            <Clock size={11} />
+                            <span>{readTimeMinutes} MIN</span>
+                          </div>
+                        </div>
+
+                        {/* Title & Synopsis */}
+                        <div className="space-y-2">
+                          <h3 className="text-base font-bold text-white group-hover:text-[#00d1ff] transition-colors leading-snug">
+                            {lecture.title}
+                          </h3>
+                          <p className="text-xs text-[#8e9299] leading-relaxed italic line-clamp-3">
+                            "{synopsis}"
+                          </p>
+                        </div>
+
+                        {/* Specs */}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.02] border border-white/5 rounded text-[9px] font-mono text-[#8e9299]">
+                            <HelpCircle size={10} className="text-emerald-500" />
+                            <span>{lecture.assessment.length} ASSESSMENT Qs</span>
+                          </div>
+                          {lecture.images && lecture.images.length > 0 && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/[0.02] border border-white/5 rounded text-[9px] font-mono text-[#8e9299]">
+                              <Activity size={10} className="text-[#00d1ff]" />
+                              <span>{lecture.images.length} SYNC DIAGRAMS</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom Playback & Export actions */}
+                      <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between gap-3">
+                        <div className="text-[8px] font-mono text-[#8e9299] uppercase tracking-widest hidden xs:block">
+                          REGISTRY_SCRIPT
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Download Study Guide Trigger */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExporterSelectedLecture(lecture);
+                              setExporterScope('single');
+                              setShowExporterModal(true);
+                            }}
+                            className="flex items-center justify-center p-2 rounded-lg border border-[#2d3139] hover:border-[#00d1ff]/40 bg-[#0d0d12]/60 text-[#8e9299] hover:text-[#00d1ff] transition-all cursor-pointer"
+                            title="Download Styled Study Sheets"
+                          >
+                            <Download size={13} />
+                          </button>
+
+                          {speak ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isCurrentPlaying) {
+                                  stopSpeaking?.();
+                                } else {
+                                  speak(lecture.script, lecture.id);
+                                }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${isCurrentPlaying ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500' : 'bg-[#00d1ff]/10 border-[#00d1ff]/30 text-[#00d1ff] hover:bg-[#00d1ff] hover:text-black hover:border-[#00d1ff]'}`}
+                            >
+                              {isCurrentPlaying ? (
+                                <>
+                                  <VolumeX size={12} className="animate-pulse" />
+                                  <span>Stop Lecture</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 size={12} />
+                                  <span>Listen &amp; Practice</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="text-[10px] text-amber-500/75 italic">
+                              Click from top header
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-[#2d3139] rounded-lg">
+                  <ShieldAlert size={48} className="text-[#8e9299] mb-4 opacity-50" />
+                  <div className="text-[10px] font-mono text-[#8e9299] tracking-widest uppercase">No lectures matches search criteria</div>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('ALL');
+                      setSearchTerm('');
+                    }}
+                    className="mt-6 px-4 py-2 text-[10px] font-mono text-[#00d1ff] border border-[#00d1ff]/30 rounded hover:bg-[#00d1ff]/10 transition-all uppercase tracking-widest"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
         ) : libraryTab === 'clips' ? (
           <motion.div 
             key="clips"
@@ -609,12 +733,21 @@ export default function VideoLibraryModule({
                           <button
                             type="button"
                             onClick={() => {
-                              (window as any).showInfoFullScreen?.({
-                                 title: item.term,
-                                 badge: "HIGH YIELD SYLLABUS CORE GLOSSARY",
-                                 content: `<strong>Clinical definition of ${item.term}:</strong><br/><br/>${item.def}`,
-                                 concept: `This term is frequently tested on the ARDMS SPI registry examination. Make sure to understand its physical triggers and visual manifestations.`
-                              });
+                              if (item.term === "Pulsed-Wave Doppler") {
+                                (window as any).showInfoFullScreen?.({
+                                   title: "Pulsed-Wave Doppler",
+                                   badge: "COGNITIVE CLINICAL STUDY SYSTEM",
+                                   content: <PulsedWaveDopplerGlossary />,
+                                   concept: "Pulsed-wave Doppler provides precise localized depth resolution of velocity vector waveforms within a designated sample volume gate.",
+                                });
+                              } else {
+                                (window as any).showInfoFullScreen?.({
+                                   title: item.term,
+                                   badge: "HIGH YIELD SYLLABUS CORE GLOSSARY",
+                                   content: `<strong>Clinical definition of ${item.term}:</strong><br/><br/>${item.def}`,
+                                   concept: `This term is frequently tested on the ARDMS SPI registry examination. Make sure to understand its physical triggers and visual manifestations.`
+                                });
+                              }
                             }}
                             className="p-1 px-1.5 text-[#00d1ff] bg-[#00d1ff]/10 hover:bg-[#00d1ff]/20 border border-[#00d1ff]/20 rounded transition-all cursor-pointer text-[7.5px] font-mono whitespace-nowrap uppercase"
                             title="Open Term in Full Screen"
@@ -787,6 +920,142 @@ export default function VideoLibraryModule({
                   videoId={selectedVideo} 
                   onClose={() => setSelectedVideo(null)} 
                 />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stylized Exporter Configuration Modal */}
+      <AnimatePresence>
+        {showExporterModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-[#11131a] border border-[#2d3139] rounded-2xl w-full max-w-lg p-6 relative flex flex-col gap-6 text-white shadow-2xl relative overflow-hidden"
+            >
+              {/* Overlay glow background */}
+              <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-[#00d1ff] to-transparent opacity-40 pointer-events-none" />
+              
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <div>
+                  <div className="text-[10px] font-mono text-[#00d1ff] tracking-[3.5px] uppercase font-bold">COMPILER UTILITY WORKSPACE</div>
+                  <h3 className="text-lg font-bold text-white tracking-tight mt-1">Export Lecture Review Deck</h3>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setShowExporterModal(false)}
+                  className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-[#8e9299] hover:text-white transition-all cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                {/* 1. Selected Scope */}
+                <div className="space-y-1.5">
+                  <label className="text-[9.5px] font-mono text-slate-400 uppercase tracking-widest font-bold">Selected Compilation Scope</label>
+                  {exporterScope === 'all' ? (
+                    <div className="bg-[#00d1ff]/10 border border-[#00d1ff]/20 rounded-xl p-3 flex items-start gap-3">
+                      <div className="p-1 px-1.5 bg-[#00d1ff] text-black text-[9px] font-mono font-black rounded uppercase">ALL</div>
+                      <div className="space-y-0.5">
+                        <strong className="text-white text-xs block">Combined Master Study Binder</strong>
+                        <span className="text-[11px] text-[#8e9299] block leading-normal">
+                          Includes index tables, custom badges spacing, full lecture syllabus scripts for all 11 modules and 20+ quiz challenges assembled.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-start gap-3">
+                      <div className="p-1 px-1.5 bg-[#00d1ff]/20 border border-[#00d1ff]/40 text-[#00d1ff] text-[9px] font-mono font-black rounded uppercase">UNIT</div>
+                      <div className="space-y-0.5">
+                        <strong className="text-white text-xs block">{exporterSelectedLecture?.title}</strong>
+                        <span className="text-[11px] text-[#8e9299] block">
+                          Category: <span className="text-[#00d1ff] font-mono font-bold">{exporterSelectedLecture?.category}</span> • Assembles single-module reviews.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Style Preset */}
+                <div className="space-y-2">
+                  <label className="text-[9.5px] font-mono text-slate-400 uppercase tracking-widest font-bold">Select Visual Theme Accent</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setExporterTheme('cosmic')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${exporterTheme === 'cosmic' ? 'bg-[#00d1ff]/10 border-[#00d1ff] text-white' : 'bg-[#0d0e12] border-white/5 text-[#8e9299] hover:bg-white/[0.02] hover:text-white'}`}
+                    >
+                      <span className="text-xs font-bold block text-white flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-[#00d1ff]" />
+                        Cosmic Slate Dark
+                      </span>
+                      <span className="text-[10px] leading-relaxed opacity-80">Radiant screen mode styled with cobalt accents &amp; dark contrast ratios.</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExporterTheme('minimalist')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${exporterTheme === 'minimalist' ? 'bg-[#0284c7]/10 border-[#0284c7] text-white' : 'bg-[#0d0e12] border-white/5 text-[#8e9299] hover:bg-white/[0.02] hover:text-white'}`}
+                    >
+                      <span className="text-xs font-bold block text-white flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        Clinical Ink-Saver
+                      </span>
+                      <span className="text-[10px] leading-relaxed opacity-80">High-contrast bright off-white outline layout. Perfect for manual printing.</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Output Format */}
+                <div className="space-y-2">
+                  <label className="text-[9.5px] font-mono text-slate-400 uppercase tracking-widest font-bold">Target File Format</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setExporterFormat('html')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${exporterFormat === 'html' ? 'bg-emerald-500/10 border-emerald-500 text-white' : 'bg-[#0d0e12] border-white/5 text-[#8e9299] hover:bg-white/[0.02] hover:text-white'}`}
+                    >
+                      <span className="text-xs font-bold block text-white">Printers HTML Document</span>
+                      <span className="text-[10px] leading-relaxed opacity-80">Includes printable @media styles and interactive self-evaluation toggle script keys.</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExporterFormat('md')}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${exporterFormat === 'md' ? 'bg-[#00d1ff]/10 border-[#00d1ff] text-white' : 'bg-[#0d0e12] border-white/5 text-[#8e9299] hover:bg-white/[0.02] hover:text-[#00d1ff]'}`}
+                    >
+                      <span className="text-xs font-bold block text-white">Markdown Notebook</span>
+                      <span className="text-[10px] leading-relaxed opacity-80">Pruned structured markdown layout. Fully compatible with Obsidian or Notion.</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 border-t border-white/5 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowExporterModal(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-xl text-xs font-bold text-[#8e9299] hover:text-white hover:bg-white/5 transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={triggerDownloadExport}
+                  className="flex-1 py-3 bg-[#00d1ff] text-black hover:bg-[#00b2db] rounded-xl text-xs font-bold hover:scale-[1.01] transition-all uppercase tracking-wider shadow-lg shadow-[#00d1ff]/10 cursor-pointer"
+                >
+                  Compile &amp; Download
+                </button>
               </div>
             </motion.div>
           </motion.div>

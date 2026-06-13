@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Waves, Video, Volume2, VolumeX, Flame, Activity, Gauge, Sliders, Info, Zap, RotateCcw, Heart, ShieldAlert, BookOpen, Search, Sparkles, Book, CheckCircle2, Maximize2 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import RotaryKnob from '../shared/RotaryKnob';
+import AttachedMediaList from '../shared/AttachedMediaList';
+import { CWDopplerSim } from '../shared/PhysicsSimulations';
 
 interface DopplerModuleProps {
   dopplerShift: number;
@@ -27,7 +29,11 @@ const PRESETS: VascularPreset[] = [
   { id: 'laminar', name: 'Normal Carotid Artery', vmax: 1.1, flow: 'laminar', resistance: 'low', direction: 'forward', description: 'Normal low-resistance profile. Elegant parabolic laminar flow with clear, open spectral window beneath the envelope.' },
   { id: 'moderate', name: 'Moderate Carotid Stenosis', vmax: 2.1, flow: 'turbulent', resistance: 'low', direction: 'forward', description: 'Moderate narrowing of the vessel lumen. Friction increases peak velocity with onset of mild turbulent spectral broadening.' },
   { id: 'severe', name: 'Severe Stenosis (Jet Flow)', vmax: 3.8, flow: 'turbulent', resistance: 'low', direction: 'forward', description: 'Critical lumen obstruction. Extreme velocity jet exceeding default Nyquist. Massive turbulence and complete spectral window filling.' },
-  { id: 'reversed', name: 'Subclavian Steal (Right Vertebral Artery)', vmax: 0.9, flow: 'laminar', resistance: 'high', direction: 'forward', description: 'Retrograde (reverse) flow runs in the right vertebral artery to supply the ipsilateral arm due to a proximal subclavian artery occlusion. Waveform displays on top of the baseline (inverted) for optimal medical assessment.' }
+  { id: 'reversed', name: 'Subclavian Steal (Right Vertebral Artery)', vmax: 0.9, flow: 'laminar', resistance: 'high', direction: 'forward', description: 'Retrograde (reverse) flow runs in the right vertebral artery to supply the ipsilateral arm due to a proximal subclavian artery occlusion. Waveform displays on top of the baseline (inverted) for optimal medical assessment.' },
+  { id: 'tardus', name: 'Tardus Parvus (Downstream Flow)', vmax: 0.45, flow: 'laminar', resistance: 'low', direction: 'forward', description: 'Post-stenotic flow downstream of a severe vascular occlusion. Displays an extremely delayed systolic acceleration time (rise time) with a flattened, rounded systolic peak (parvus) and absent dicrotic notch.' },
+  { id: 'regurgitation', name: 'Aortic Regurgitation (LVOT Jet)', vmax: 1.6, flow: 'turbulent', resistance: 'low', direction: 'forward', description: 'Valvular incompetence in the Left Ventricular Outflow Tract (LVOT). Displays high-velocity systemic outflow in systole and massive retrograde (diastolic reverse) flow during all of diastole.' },
+  { id: 'hepatofugal', name: 'Portal Hypertension (Reverse Flow)', vmax: 0.18, flow: 'laminar', resistance: 'low', direction: 'forward', description: 'Severe liver cirrhosis causes high portal resistance, shifting portal vein flow from hepatopetal (forward/toward liver) to hepatofugal (retrograde/away from liver). Continuous low-velocity flow.' },
+  { id: 'eca_tap', name: 'ECA Temporal Tap Maneuver', vmax: 0.85, flow: 'laminar', resistance: 'high', direction: 'forward', description: 'High-resistance External Carotid Artery (ECA) wave. Features rapid drop to zero diastole. Demonstrates the temporal tap maneuver adding rapid sawtooth oscillations to diastole to distinguish ECA from ICA.' }
 ];
 
 interface StudyItem {
@@ -325,7 +331,7 @@ export default function DopplerModule({
   setViewMode
 }: DopplerModuleProps) {
   // 1. Diagnostic Scanner Modes
-  const [activeTab, setActiveTab] = useState<'spectral' | 'color'>('spectral');
+  const [activeTab, setActiveTab] = useState<'spectral' | 'color' | 'cw_comparison'>('spectral');
   const [activePreset, setActivePreset] = useState<VascularPreset>(PRESETS[0]);
   const [dopplerMode, setDopplerMode] = useState<'pw' | 'cw'>('pw'); // PW vs CW Doppler select state
   const [autoScale, setAutoScale] = useState<boolean>(false); // Automatically scale PRF based on peak velocity to prevent aliasing
@@ -355,8 +361,11 @@ export default function DopplerModule({
   const [acousticPower, setAcousticPower] = useState<number>(100); // 10% to 100% Acoustic output power
   const [autoEnvelope, setAutoEnvelope] = useState<boolean>(true); // Draw peak velocity envelope
   const [sweepSpeed, setSweepSpeed] = useState<number>(2); // 1 (Slow), 2 (Normal), 4 (Fast) scroll sweep speed
+  const [hoverX, setHoverX] = useState<number | null>(null);
   const [hoverY, setHoverY] = useState<number | null>(null);
   const [hoverCaliperVal, setHoverCaliperVal] = useState<number | null>(null);
+  const [isDraggingBaseline, setIsDraggingBaseline] = useState<boolean>(false);
+  const [hoveringBaseline, setHoveringBaseline] = useState<boolean>(false);
 
   // Scrolling profile peak history coordinates
   const traceHistoryRef = useRef<number[]>(new Array(480).fill(0));
@@ -378,6 +387,21 @@ export default function DopplerModule({
   const [isDraggingCanvasAngle, setIsDraggingCanvasAngle] = useState(false);
   const [knobCategory, setKnobCategory] = useState<'transducer' | 'signal' | 'safety'>('transducer');
   const [selectedHelpKnob, setSelectedHelpKnob] = useState<string>('angle');
+
+  const isHoveringSpectralWindow = useMemo(() => {
+    if (activeTab !== 'spectral' || hoverX === null || hoverY === null) return false;
+    if (hoverX < 0 || hoverX > 480 || hoverY < 0 || hoverY > 230) return false;
+    const peakY = traceHistoryRef.current[Math.floor(hoverX)];
+    if (!peakY) return false;
+    const canvasHeight = 230;
+    const currentBaselineY = (0.5 - baselineShift * 0.5) * canvasHeight;
+    const padding = 5;
+    if (peakY < currentBaselineY) {
+      return hoverY > peakY + padding && hoverY < currentBaselineY - padding;
+    } else {
+      return hoverY < peakY - padding && hoverY > currentBaselineY + padding;
+    }
+  }, [hoverX, hoverY, activeTab, baselineShift]);
 
   const [rightPanelMode, setRightPanelMode] = useState<'console' | 'study'>('console');
   const [studySearchQuery, setStudySearchQuery] = useState('');
@@ -598,6 +622,58 @@ export default function DopplerModule({
   const getVelocityAtPhase = (phase: number, preset: VascularPreset): number => {
     const directionMult = preset.direction === 'reverse' ? -1 : 1;
     const peakV = Math.abs(preset.vmax);
+
+    if (preset.id === 'tardus') {
+      // Tardus Parvus: slow systolic upstroke (rise time takes until phase 0.38), rounded peak, no notch
+      if (phase < 0.38) {
+        return (0.15 + (phase / 0.38) * 0.85) * peakV * directionMult;
+      } else if (phase < 0.68) {
+        // Rounded peak and slow runoff
+        const p = (phase - 0.38) / 0.30;
+        return (1.0 - p * 0.35) * peakV * directionMult;
+      } else {
+        // Flat blood runoff, low amplitude
+        const p = (phase - 0.68) / 0.32;
+        return (0.65 - p * 0.15) * peakV * directionMult;
+      }
+    }
+
+    if (preset.id === 'regurgitation') {
+      // Aortic Regurgitation: rapid systolic contraction followed by sudden deep retrograde jet
+      if (phase < 0.12) {
+        return (0.2 + (phase / 0.12) * 0.8) * peakV * directionMult;
+      } else if (phase < 0.32) {
+        const p = (phase - 0.12) / 0.20;
+        return (1.0 - p * 1.8) * peakV * directionMult; // drops way below zero to negative
+      } else {
+        // Continuous retrograde diastolic jet decaying back to baseline
+        const p = (phase - 0.32) / 0.68;
+        return (-0.8 + p * 0.35) * peakV * directionMult;
+      }
+    }
+
+    if (preset.id === 'hepatofugal') {
+      // Portal Hypertension (Hepatofugal): Continuous, non-pulsatile reverse flow with slight respiratory modulation
+      const respiratoryMod = 0.04 * Math.sin(phase * 2 * Math.PI);
+      return -peakV * (0.85 + respiratoryMod);
+    }
+
+    if (preset.id === 'eca_tap') {
+      // High resistance External Carotid Artery (ECA) with diastolic "temporal tap" sawtooth oscillations
+      if (phase < 0.12) {
+        return (0.2 + (phase / 0.12) * 0.8) * peakV;
+      } else if (phase < 0.32) {
+        const p = (phase - 0.12) / 0.20;
+        return (1.0 - p * 0.95) * peakV; // rapid decrease to near-zero
+      } else if (phase < 0.38) {
+        return 0.05 * peakV;
+      } else {
+        // Temporal tap maneuver adding diastolic fluctuations (5 sawtooth ripples)
+        const tapFraction = (phase - 0.38) / 0.62;
+        const tapRipples = Math.sin(tapFraction * 5 * 2 * Math.PI) * 0.22 * (1.1 - tapFraction);
+        return Math.max(0.01, (0.05 + tapRipples) * peakV);
+      }
+    }
 
     let normEnvelope = 0.2;
     if (phase < 0.15) {
@@ -1136,12 +1212,38 @@ export default function DopplerModule({
             scrCtx.stroke();
 
             // Draw critical horizontal baseline line
-            scrCtx.strokeStyle = '#ffd700';
-            scrCtx.lineWidth = 1.5;
+            if (isDraggingBaseline) {
+              scrCtx.strokeStyle = '#ffffff';
+              scrCtx.lineWidth = 2.5;
+              scrCtx.shadowBlur = 8;
+              scrCtx.shadowColor = '#ffd700';
+            } else if (hoveringBaseline) {
+              scrCtx.strokeStyle = '#ffd700';
+              scrCtx.lineWidth = 2.0;
+              scrCtx.shadowBlur = 4;
+              scrCtx.shadowColor = '#ffd700';
+            } else {
+              scrCtx.strokeStyle = '#ffd700';
+              scrCtx.lineWidth = 1.5;
+              scrCtx.shadowBlur = 0;
+            }
+
             scrCtx.beginPath();
             scrCtx.moveTo(0, baselineY);
             scrCtx.lineTo(w, baselineY);
             scrCtx.stroke();
+
+            // Draw left/right anchor circles as visual handle cues when hovered/dragged
+            if (isDraggingBaseline || hoveringBaseline) {
+              scrCtx.fillStyle = isDraggingBaseline ? '#ffffff' : '#ffd700';
+              scrCtx.beginPath();
+              scrCtx.arc(15, baselineY, 4, 0, Math.PI * 2);
+              scrCtx.arc(w - 15, baselineY, 4, 0, Math.PI * 2);
+              scrCtx.fill();
+            }
+
+            // Reset shadow attributes
+            scrCtx.shadowBlur = 0;
 
             // 1. Draw Peak Velocity Envelope Auto-Trace
             if (autoEnvelope) {
@@ -1548,30 +1650,69 @@ export default function DopplerModule({
             // Draw Angle Corrector parallel indicator line
             const correctorRad = ((90 - dopplerAngle) * Math.PI) / 180;
             ctx.strokeStyle = '#00d1ff';
-            ctx.lineWidth = 1.0;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(gateX - Math.cos(correctorRad) * 16, gateY - Math.sin(correctorRad) * 16);
-            ctx.lineTo(gateX + Math.cos(correctorRad) * 16, gateY + Math.sin(correctorRad) * 16);
+            const armLX = gateX - Math.cos(correctorRad) * 22;
+            const armLY = gateY - Math.sin(correctorRad) * 22;
+            const armRX = gateX + Math.cos(correctorRad) * 22;
+            const armRY = gateY + Math.sin(correctorRad) * 22;
+            ctx.moveTo(armLX, armLY);
+            ctx.lineTo(armRX, armRY);
             ctx.stroke();
 
-            // Label corrector Angle info
-            ctx.fillStyle = '#00d1ff';
-            ctx.font = '8px monospace';
-            ctx.fillText(`Correction Angle: ${dopplerAngle}°`, gateX + 14, gateY - 14);
+            // Draw interactive drag handles on ends of the angle corrector
+            ctx.fillStyle = isDraggingCanvasAngle ? '#ffd700' : '#ffffff';
+            ctx.beginPath();
+            ctx.arc(armLX, armLY, isDraggingCanvasAngle ? 5 : 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(armRX, armRY, isDraggingCanvasAngle ? 5 : 3.5, 0, Math.PI * 2);
+            ctx.fill();
 
             // Draw interactive target dashed ring around SV gate for mouse dragging
-            ctx.strokeStyle = 'rgba(0, 209, 255, 0.4)';
-            ctx.lineWidth = 1.0;
-            ctx.setLineDash([3, 3]);
-            ctx.beginPath();
-            ctx.arc(gateX, gateY, 25, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            if (isDraggingCanvasAngle) {
+              ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+              ctx.lineWidth = 1.0;
+              ctx.setLineDash([2, 4]);
+              ctx.beginPath();
+              ctx.arc(gateX, gateY, 22, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            } else {
+              ctx.strokeStyle = 'rgba(0, 209, 255, 0.4)';
+              ctx.lineWidth = 1.0;
+              ctx.setLineDash([3, 3]);
+              ctx.beginPath();
+              ctx.arc(gateX, gateY, 22, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
 
             // Dynamic drag-to-align small caption tag
-            ctx.fillStyle = 'rgba(0, 209, 255, 0.55)';
-            ctx.font = '7px monospace';
-            ctx.fillText('DRAG SECTOR TO ROTATE θ', gateX - 45, gateY + 36);
+            ctx.fillStyle = isDraggingCanvasAngle ? 'rgba(255, 215, 0, 0.9)' : 'rgba(0, 209, 255, 0.55)';
+            ctx.font = isDraggingCanvasAngle ? 'bold 7.5px monospace' : '7px monospace';
+            ctx.fillText(isDraggingCanvasAngle ? `θ = ${dopplerAngle}°` : 'DRAG TO ROTATE θ', gateX - (isDraggingCanvasAngle ? 16 : 40), gateY + 36);
+
+            // Dynamically show the shift calculation if dragging
+            if (isDraggingCanvasAngle) {
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+              ctx.fillRect(gateX + 40, gateY - 50, 160, 50);
+              ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+              ctx.strokeRect(gateX + 40, gateY - 50, 160, 50);
+              
+              const calcCos = Math.max(0.01, Math.cos((dopplerAngle * Math.PI) / 180));
+              const currentFdKHzForBox = (2 * (f0 * 1e6) * Math.abs(activePreset.vmax) * calcCos) / soundSpeed / 1000;
+              
+              ctx.fillStyle = '#ffd700';
+              ctx.font = 'bold 8px monospace';
+              ctx.fillText(`Δf = (2 • f₀ • v • cosθ) / c`, gateX + 45, gateY - 38);
+              ctx.fillStyle = '#00d1ff';
+              ctx.font = '8px monospace';
+              ctx.fillText(`cos(${dopplerAngle}°) = ${calcCos.toFixed(3)}`, gateX + 45, gateY - 26);
+              ctx.fillStyle = 'white';
+              ctx.font = 'bold 9px monospace';
+              ctx.fillText(`Est. Shift: ${currentFdKHzForBox.toFixed(2)} kHz`, gateX + 45, gateY - 14);
+            }
 
             // Draw blood cells / erythrocyte particles propagating horizontally
             // Particles speeds are modulated by instant flow velocity and stenosis local squeeze (continuity equation)
@@ -1780,15 +1921,30 @@ export default function DopplerModule({
   // Quick reset parameters to preset values
   const handleApplyPreset = (preset: VascularPreset) => {
     setActivePreset(preset);
-    // Reset secondary knobs safely matching pathlogical states
+    // Reset secondary knobs safely matching pathological states
     if (preset.id === 'severe') {
       setPrfKHz(8.5); // automatically scale PRF high to resolve jet aliasing!
       setWallFilterHz(300); // raise wall filter to remove low-frequency turbulence wall clutter
+      setBaselineShift(0);
+    } else if (preset.id === 'regurgitation') {
+      setPrfKHz(7.0);
+      setWallFilterHz(120);
+      setBaselineShift(0);
+    } else if (preset.id === 'hepatofugal') {
+      setPrfKHz(1.5); // Portal flow is slow, low scale needed
+      setWallFilterHz(40); // Need low wall filter to avoid cutting venous flow!
+      setBaselineShift(0.3); // Shift baseline up so we can see negative flow clearly
+    } else if (preset.id === 'tardus') {
+      setPrfKHz(2.5); // Low velocity requires smaller scale
+      setWallFilterHz(65);
+      setBaselineShift(0);
     } else {
       setPrfKHz(5.0);
       setWallFilterHz(150);
+      setBaselineShift(0);
     }
-    setBaselineShift(0);
+    // Prevent autoScale from immediately resetting our specialized scales
+    setAutoScale(false);
     // Reset calipers when switching pathologies
     setCaliperPSVY(null);
     setCaliperEDVY(null);
@@ -1848,6 +2004,20 @@ export default function DopplerModule({
           </div>
         </div>
 
+        {/* AGENT SARAH CLINICAL APPS INTERCOM */}
+        <div className="flex bg-rose-950/40 border border-rose-500/20 p-4 rounded-xl items-start gap-3 relative overflow-hidden shadow-md">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-rose-400/5 to-transparent rounded-full" />
+          <div className="h-1.5 w-1.5 rounded-full bg-rose-400 mt-1.5 animate-pulse shrink-0" />
+          <div className="space-y-1">
+            <div className="text-[7.5px] font-mono text-rose-400 uppercase tracking-widest font-black leading-none">
+              AGENT SARAH • CLINICAL APPLICATIONS BRIEFING
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+              "Never sample blood hemodynamics at a 90-degree angle! Keep your beam adjusted. Cosine(90) is exactly 0, which obliterates your frequency shift readings and displays no spectral flow. Click and drag the angle line or turn the Knob in my workspace below to align parallel vectors under 60-degrees!"
+            </p>
+          </div>
+        </div>
+
         {/* SCANNER CONSOLE GRAPHICS TAB SELECTOR */}
         <div className="flex-1 min-h-[500px] md:min-h-[440px] bg-black border border-[#1a1c22] rounded-2xl relative overflow-hidden flex flex-col shadow-2xl">
           <div className="h-12 border-b border-[#1a1c22] bg-[#0c0d10]/95 flex justify-between items-center px-4 shrink-0">
@@ -1865,6 +2035,13 @@ export default function DopplerModule({
                 >
                    <Waves size={10} />
                    Color Flow Box
+                </button>
+                <button 
+                  onClick={() => setActiveTab('cw_comparison')}
+                  className={`text-[9px] font-mono tracking-widest font-bold uppercase px-3 py-1.5 rounded transition-all flex items-center gap-2 ${activeTab === 'cw_comparison' ? 'bg-[#ff4d4d]/10 border border-[#ff4d4d] text-[#ff4d4d]' : 'text-white/60 hover:text-white border border-transparent'}`}
+                >
+                   <Zap size={10} />
+                   CW Physics Simulator
                 </button>
              </div>
              <div className="flex gap-4 items-center">
@@ -1916,21 +2093,63 @@ export default function DopplerModule({
                            ref={pwScreenCanvasRef} 
                            width="480" 
                            height="230" 
-                           className="w-full h-full object-fill block cursor-crosshair" 
+                           className={`w-full h-full object-fill block ${isDraggingBaseline ? 'cursor-ns-resize' : hoveringBaseline ? 'cursor-ns-resize' : activeCaliper ? 'cursor-cell' : 'cursor-crosshair'}`}
                            onMouseMove={(e) => {
                              const canvas = pwScreenCanvasRef.current;
                              if (!canvas) return;
                              const rect = canvas.getBoundingClientRect();
+                             const clickX = ((e.clientX - rect.left) / rect.width) * canvas.width;
                              const clickY = ((e.clientY - rect.top) / rect.height) * canvas.height;
-                             setHoverY(clickY);
-                             const vel = getVelocityFromCanvasY(clickY, canvas.height);
-                             setHoverCaliperVal(vel);
+                             
+                             if (isDraggingBaseline) {
+                               const ratio = clickY / canvas.height;
+                               let shift = 1.0 - 2.0 * ratio; // Convert canvas top-origin coordinates to baseline value
+                               shift = Math.max(-0.8, Math.min(0.8, shift));
+                               setBaselineShift(Math.round(shift * 100) / 100);
+                               setHoverY(null);
+                               setHoverX(null);
+                               setHoverCaliperVal(null);
+                               return;
+                             }
+
+                             const currentBaselineY = canvas.height * (0.5 - baselineShift * 0.5);
+                             const isNearBaseline = Math.abs(clickY - currentBaselineY) < 14;
+                             setHoveringBaseline(isNearBaseline && !activeCaliper);
+
+                             setHoverX(clickX);
+                             if (!isNearBaseline || activeCaliper) {
+                               setHoverY(clickY);
+                               const vel = getVelocityFromCanvasY(clickY, canvas.height);
+                               setHoverCaliperVal(vel);
+                             } else {
+                               setHoverY(null);
+                               setHoverCaliperVal(null);
+                             }
+                           }}
+                           onMouseDown={(e) => {
+                             if (activeCaliper) return;
+                             const canvas = pwScreenCanvasRef.current;
+                             if (!canvas) return;
+                             const rect = canvas.getBoundingClientRect();
+                             const clickY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+                             const currentBaselineY = canvas.height * (0.5 - baselineShift * 0.5);
+                             
+                             if (Math.abs(clickY - currentBaselineY) < 14) {
+                               setIsDraggingBaseline(true);
+                             }
+                           }}
+                           onMouseUp={() => {
+                             setIsDraggingBaseline(false);
                            }}
                            onMouseLeave={() => {
+                             setIsDraggingBaseline(false);
                              setHoverY(null);
+                             setHoverX(null);
                              setHoverCaliperVal(null);
+                             setHoveringBaseline(false);
                            }}
                            onClick={(e) => {
+                             if (isDraggingBaseline) return;
                              if (!activeCaliper) return;
                              const canvas = pwScreenCanvasRef.current;
                              if (!canvas) return;
@@ -1947,6 +2166,65 @@ export default function DopplerModule({
                              }
                            }}
                          />
+
+                         {/* Spectral Window Diagnostic Tooltip */}
+                         {isHoveringSpectralWindow && hoverX !== null && hoverY !== null && pwScreenCanvasRef.current && (
+                           <div 
+                             className="absolute z-50 pointer-events-none p-3 bg-black/95 border border-emerald-500/30 rounded-xl shadow-[0_4px_30px_rgba(16,185,129,0.15)] backdrop-blur-sm max-w-[220px]"
+                             style={{ 
+                               left: `${(hoverX / 480) * 100}%`, 
+                               top: `${(hoverY / 230) * 100}%`,
+                               transform: `translate(${(hoverX / 480) > 0.5 ? '-110%' : '15px'}, ${(hoverY / 230) > 0.6 ? '-110%' : '15px'})`
+                             }}
+                           >
+                             <div className="flex gap-2 items-center mb-1.5">
+                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                               <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-400">Spectral Window</span>
+                             </div>
+                             {activePreset.flow === 'turbulent' ? (
+                               <p className="text-[9px] text-white/70 leading-relaxed font-mono">
+                                 Flow is <strong className="text-amber-400">TURBULENT</strong> here. Disorganized multi-directional velocities cause <strong className="text-white">Spectral Broadening</strong>, filling the normally empty clear window with dense echoes.
+                               </p>
+                             ) : (
+                               <p className="text-[9px] text-white/70 leading-relaxed font-mono">
+                                 Flow is <strong className="text-[#00d1ff]">LAMINAR</strong>. The dark, echo-free clear space beneath the peak signifies that most red blood cells are moving uniformly at similar speeds.
+                               </p>
+                             )}
+                           </div>
+                         )}
+
+                         {/* Interactive baseline shift overlay toolbar */}
+                         <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-black/85 border border-[#ffd700]/15 rounded-xl p-2 backdrop-blur shadow-2xl shadow-black/80 z-20 transition-all hover:border-[#ffd700]/40 group select-none">
+                            <div className="text-[7px] font-mono text-white/35 uppercase tracking-widest font-black leading-none group-hover:text-[#ffd700] transition-colors">BASE</div>
+                            
+                            <button
+                              onClick={() => setBaselineShift(prev => Math.min(0.8, Math.round((prev + 0.1) * 10) / 10))}
+                              className="w-[26px] h-[26px] flex items-center justify-center rounded-lg bg-[#2d3139]/35 border border-white/10 text-[#ffd700] hover:bg-[#ffd700]/10 hover:border-[#ffd700]/25 active:scale-95 transition-all text-[9px] font-bold"
+                              title="Shift Baseline Up"
+                            >
+                              ▲
+                            </button>
+
+                            {/* Styled mini visual track status */}
+                            <div className="relative w-1.5 h-14 bg-[#2d3139]/50 rounded-full overflow-hidden flex flex-col justify-end">
+                               <div 
+                                 className="w-full bg-[#ffd700] rounded-full transition-all duration-150"
+                                 style={{ height: `${((baselineShift - (-0.8)) / 1.6) * 100}%` }}
+                               />
+                            </div>
+                            
+                            <button
+                              onClick={() => setBaselineShift(prev => Math.max(-0.8, Math.round((prev - 0.1) * 10) / 10))}
+                              className="w-[26px] h-[26px] flex items-center justify-center rounded-lg bg-[#2d3139]/35 border border-white/10 text-[#ffd700] hover:bg-[#ffd700]/10 hover:border-[#ffd700]/25 active:scale-95 transition-all text-[9px] font-bold"
+                              title="Shift Baseline Down"
+                            >
+                              ▼
+                            </button>
+
+                            <span className="text-[7.5px] font-mono font-black text-white/90 bg-white/5 border border-white/10 px-1 py-0.5 rounded leading-none">
+                              {baselineShift > 0 ? `+${(baselineShift * 100).toFixed(0)}` : `${(baselineShift * 100).toFixed(0)}`}
+                            </span>
+                         </div>
                       </div>
 
                       {/* Right Side: High-speed live Fourier FFT spectrum slice analyzer */}
@@ -2025,6 +2303,16 @@ export default function DopplerModule({
                   </div>
                 )}
 
+                {activeTab === 'cw_comparison' && (
+                  <div className="w-full text-white overflow-y-auto max-h-[550px] p-2 no-scrollbar bg-[#060709]">
+                     <CWDopplerSim 
+                       velocity={Math.abs(activePreset.vmax)} 
+                       angle={dopplerAngle} 
+                       frequency={f0}
+                     />
+                  </div>
+                )}
+
                 {/* Aliasing Status banner */}
                 <AnimatePresence>
                    {isCurrentlyAliasing && (
@@ -2068,6 +2356,304 @@ export default function DopplerModule({
                       {activePreset.id === 'moderate' && 'Moderate Stenosis'}
                       {activePreset.id === 'severe' && 'Critical Obstruction!'}
                       {activePreset.id === 'reversed' && 'Subclavian Steal'}
+                   </div>
+                </div>
+             </div>
+
+             {/* INTEGRATED TACTILE SCANNER CONSOLE DECK */}
+             <div className="mt-6 bg-[#0d0f14] border border-[#2d3139]/40 rounded-2xl p-4 md:p-5 relative shadow-inner overflow-hidden select-none">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-[#00d1ff]/5 rounded-full blur-3xl pointer-events-none" />
+                
+                {/* Header Row */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/5 pb-3.5 mb-4">
+                   <div className="flex items-center gap-2.5">
+                      <div className="relative">
+                         <Sliders size={15} className="text-[#00d1ff]" />
+                         <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                         <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <div>
+                         <div className="text-[10px] font-mono font-bold text-white uppercase tracking-wider">Tactile Ultrasound Control Desk</div>
+                         <div className="text-[7.5px] font-mono text-white/40 uppercase">Direct Hardware Calibrator &bull; SPI-Compliant</div>
+                      </div>
+                   </div>
+                   
+                   {/* Modality Selector Hardware Buttons */}
+                   <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                      <span className="text-[7px] font-mono text-white/30 uppercase px-2">Modality Select:</span>
+                      <button
+                        onClick={() => {
+                          setDopplerMode('pw');
+                          setSelectedHelpKnob('gatedepth');
+                        }}
+                        className={`px-3 py-1 text-[8px] font-mono uppercase font-black tracking-wider rounded-lg border transition-all ${dopplerMode === 'pw' ? 'bg-[#ffd700]/15 border-[#ffd700] text-[#ffd700]' : 'border-transparent text-[#8e9299] hover:text-white bg-transparent'}`}
+                      >
+                         Pulsed (PW)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDopplerMode('cw');
+                          setSelectedHelpKnob('angle');
+                        }}
+                        className={`px-3 py-1 text-[8px] font-mono uppercase font-black tracking-wider rounded-lg border transition-all ${dopplerMode === 'cw' ? 'bg-[#00d1ff]/15 border-[#00d1ff] text-[#00d1ff]' : 'border-transparent text-[#8e9299] hover:text-white bg-transparent'}`}
+                      >
+                         Continuous (CW)
+                      </button>
+                   </div>
+                </div>
+
+                {/* 4-Column Controls Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                   
+                   {/* Group 1: Beam Vector & Insonation angle */}
+                   <div className="bg-black/25 rounded-xl border border-white/[0.03] p-3 flex flex-col justify-between gap-3">
+                      <div>
+                         <div className="flex justify-between items-center mb-1">
+                            <span className="text-[8px] text-[#ffd700] font-black uppercase tracking-widest font-mono">1. Vector Angle Calibration</span>
+                            <span className="text-[#ffd700] text-[10px] font-black font-mono">{dopplerAngle}°</span>
+                         </div>
+                         <div className="text-[7px] text-white/30 font-mono mb-2">Adjust corrector with flow conduit axis (θ)</div>
+                         <input 
+                           type="range"
+                           min="0"
+                           max="85"
+                           value={dopplerAngle}
+                           onChange={(e) => setDopplerAngle(parseInt(e.target.value))}
+                           className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-[#ffd700]"
+                         />
+                         <div className="flex justify-between text-[6px] text-white/20 font-mono mt-1">
+                            <span>0° (Max Shift)</span>
+                            <span>60° (Target)</span>
+                            <span>85° (Limit)</span>
+                         </div>
+                      </div>
+
+                      {/* Cosmic cosine indicator badge */}
+                      <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 font-mono text-[8px]">
+                         <div className="flex justify-between text-white/50 mb-0.5">
+                            <span>Incidence Angle cos(θ):</span>
+                            <span className="text-white font-bold">{Math.cos(dopplerAngle * Math.PI / 180).toFixed(4)}</span>
+                         </div>
+                         <div className="flex justify-between text-white/50">
+                            <span>Calibration Multiplier:</span>
+                            <span className="text-[#00d1ff] font-bold">{(1 / Math.max(0.01, Math.cos(dopplerAngle * Math.PI / 180))).toFixed(2)}x</span>
+                         </div>
+                      </div>
+
+                      {/* Quick Angle Presets */}
+                      <div className="grid grid-cols-3 gap-1">
+                         {([0, 30, 60] as const).map(angle => (
+                            <button
+                              key={angle}
+                              onClick={() => setDopplerAngle(angle)}
+                              className={`py-1 text-[7.5px] font-mono rounded border transition-all ${dopplerAngle === angle ? 'bg-[#ffd700]/15 border-[#ffd700] text-[#ffd700] font-bold' : 'border-white/5 bg-black/40 text-white/40 hover:text-white'}`}
+                            >
+                               {angle}° Preset
+                            </button>
+                         ))}
+                      </div>
+                   </div>
+
+                   {/* Group 2: Pulse Repetition Frequency (PRF Scale) */}
+                   <div className="bg-black/25 rounded-xl border border-white/[0.03] p-3 flex flex-col justify-between gap-3">
+                      <div>
+                         <div className="flex justify-between items-center mb-1">
+                            <span className="text-[8px] text-[#00d1ff] font-black uppercase tracking-widest font-mono">2. Pulse Frequency (scale)</span>
+                            <span className={`text-[10px] font-black font-mono ${autoScale ? 'text-emerald-400' : 'text-[#00d1ff]'}`}>
+                               {dopplerMode === 'cw' ? '∞ Unlimited' : `${prfKHz.toFixed(1)} kHz`}
+                            </span>
+                         </div>
+                         <div className="text-[7px] text-white/30 font-mono mb-2">Turn knob to control maximum velocity tracking range</div>
+                         <div className="py-2 flex justify-center">
+                            <RotaryKnob
+                              label="PRF Scale"
+                              value={prfKHz}
+                              min={1.0}
+                              max={10.0}
+                              step={0.5}
+                              disabled={dopplerMode === 'cw'}
+                              onChange={(val) => {
+                                setPrfKHz(val);
+                                setAutoScale(false);
+                              }}
+                              unit="kHz"
+                            />
+                         </div>
+                      </div>
+
+                      {/* Auto-Scale Optimization */}
+                      <div className="space-y-1.5">
+                         <button 
+                           onClick={() => setAutoScale(!autoScale)}
+                           className={`w-full flex items-center justify-between px-2.5 py-1.5 border rounded-lg transition-all ${autoScale ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-black/50 border-white/5 text-white/50 hover:text-white hover:border-white/10'}`}
+                         >
+                            <span className="text-[7.5px] uppercase font-bold tracking-wider flex items-center gap-1.5">
+                               <span className={`w-1.5 h-1.5 rounded-full ${autoScale ? 'bg-emerald-400 animate-pulse' : 'bg-white/20'}`} />
+                               Auto-Envelope Scale Match
+                            </span>
+                            <span className="text-[8px] font-bold">{autoScale ? "ACTIVE" : "MANUAL"}</span>
+                         </button>
+                         
+                         <div className="bg-[#101217]/60 text-[6.5px] font-mono text-white/40 p-1.5 border border-white/[0.02] rounded-lg leading-snug">
+                            {dopplerMode === 'cw' 
+                              ? 'Continuous transmit is immune to sampling limits; no aliasing is possible.' 
+                              : `Nyquist threshold limit of raw shift: ${(prfKHz / 2).toFixed(2)} kHz.`
+                            }
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* Group 3: Baseline Shift and Wall Filter */}
+                   <div className="bg-black/25 rounded-xl border border-white/[0.03] p-3 flex flex-col justify-between gap-3">
+                      <div className="space-y-2">
+                         {/* Baseline dynamic shift */}
+                         <div>
+                            <div className="flex justify-between items-center text-[7.5px] font-mono text-white/60 mb-0.5">
+                               <span className="font-bold">Spectral Baseline Offset</span>
+                               <span className="text-white font-bold">{baselineShift > 0 ? `+${(baselineShift * 100).toFixed(0)}%` : `${(baselineShift * 100).toFixed(0)}%`}</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="-0.8"
+                              max="0.8"
+                              step="0.1"
+                              value={baselineShift}
+                              onChange={(e) => setBaselineShift(parseFloat(e.target.value))}
+                              className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-white"
+                            />
+                         </div>
+
+                         {/* Wall Filter cutoff frequency slider */}
+                         <div>
+                            <div className="flex justify-between items-center text-[7.5px] font-mono text-white/60 mb-0.5">
+                               <span className="font-bold">Wall Filter Frequency Cutoff</span>
+                               <span className="text-cyan-400 font-bold">{wallFilterHz} Hz</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="50"
+                              max="600"
+                              step="25"
+                              value={wallFilterHz}
+                              onChange={(e) => setWallFilterHz(parseInt(e.target.value))}
+                              className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-cyan-400"
+                            />
+                         </div>
+                      </div>
+
+                      {/* Direction Inversion Card */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1">
+                         <button
+                           onClick={() => setSpectralInvert(prev => !prev)}
+                           className={`py-1 rounded border text-[7px] font-mono uppercase tracking-wider transition-all ${spectralInvert ? 'bg-[#00d1ff]/15 border-[#00d1ff] text-[#00d1ff] font-bold' : 'border-white/5 bg-black/40 text-white/40 hover:text-white'}`}
+                         >
+                            🔄 Invert
+                         </button>
+                         <button
+                           onClick={() => {
+                             setBaselineShift(0);
+                             setWallFilterHz(100);
+                           }}
+                           className="py-1 rounded border border-white/5 bg-black/40 text-white/40 hover:text-white text-[7px] font-mono uppercase tracking-wider transition-all"
+                         >
+                            ♻️ Zero Offset
+                         </button>
+                      </div>
+                   </div>
+
+                   {/* Group 4: Audio Volume and Signal Boost */}
+                   <div className="bg-black/25 rounded-xl border border-white/[0.03] p-3 flex flex-col justify-between gap-3">
+                      <div className="space-y-2">
+                         {/* Doppler visual sensitivity gain slider */}
+                         <div>
+                            <div className="flex justify-between items-center text-[7.5px] font-mono text-white/60 mb-0.5">
+                               <span className="font-bold">Doppler Receiver Gain</span>
+                               <span className="text-emerald-400 font-bold">{dopplerGain} dB</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="10"
+                              max="100"
+                              value={dopplerGain}
+                              onChange={(e) => setDopplerGain(parseInt(e.target.value))}
+                              className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-emerald-400"
+                            />
+                         </div>
+
+                         {/* Acoustic transmission power slider (Exposure safety) */}
+                         <div>
+                            <div className="flex justify-between items-center text-[7.5px] font-mono text-white/60 mb-0.5">
+                               <span className="font-bold">Acoustic Output Power</span>
+                               <span className={`font-bold ${acousticPower > 50 ? 'text-red-400' : 'text-emerald-400'}`}>{acousticPower}%</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="10"
+                              max="100"
+                              value={acousticPower}
+                              onChange={(e) => setAcousticPower(parseInt(e.target.value))}
+                              className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-red-400"
+                            />
+                         </div>
+                      </div>
+
+                      {/* Interactive audio sound card */}
+                      <div className="bg-black/50 rounded-lg p-2 flex items-center justify-between border border-white/5 gap-2">
+                         <button
+                           onClick={() => setSpeakerOn(prev => !prev)}
+                           className={`p-1 rounded transition-all ${speakerOn ? 'text-[#00d1ff] bg-[#00d1ff]/10 hover:bg-[#00d1ff]/25' : 'text-white/30 hover:text-white/60 bg-white/5'}`}
+                           title="Toggle Doppler Audio Speaker Output"
+                         >
+                            {speakerOn ? <Volume2 size={13} className="animate-pulse" /> : <VolumeX size={13} />}
+                         </button>
+                         <div className="flex-1 flex flex-col">
+                            <div className="flex justify-between text-[6px] text-white/40 uppercase font-mono px-0.5">
+                               <span>Volume</span>
+                               <span>{volumeLevel}%</span>
+                            </div>
+                            <input 
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={volumeLevel}
+                              disabled={!speakerOn}
+                              onChange={(e) => setVolumeLevel(parseInt(e.target.value))}
+                              className="w-full h-1 bg-[#1a1c22] rounded cursor-pointer accent-[#00d1ff] disabled:opacity-20 disabled:cursor-not-allowed"
+                            />
+                         </div>
+                      </div>
+                   </div>
+
+                </div>
+
+                {/* Auxiliary Envelope mapping features shelf */}
+                <div className="mt-3 pt-2.5 border-t border-white/5 flex flex-wrap justify-between items-center gap-2 text-[7.5px] font-mono text-white/40">
+                   <div className="flex items-center gap-3">
+                      <span className="uppercase text-white/30 font-bold">Auto Envelope:</span>
+                      <button 
+                        onClick={() => setAutoEnvelope(prev => !prev)}
+                        className={`px-2 py-0.5 rounded border transition-all ${autoEnvelope ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold' : 'border-white/5 hover:text-white bg-black/30'}`}
+                      >
+                         {autoEnvelope ? 'ON (Systole Peak Matcher)' : 'OFF (Hidden Track)'}
+                      </button>
+                      
+                      <span className="uppercase text-white/30 font-bold ml-1">Sweep Interval:</span>
+                      <div className="flex gap-1">
+                         {([1, 2, 4] as const).map(speedValue => (
+                            <button
+                              key={speedValue}
+                              onClick={() => setSweepSpeed(speedValue)}
+                              className={`px-1.5 py-0.5 rounded border transition-all ${sweepSpeed === speedValue ? 'border-[#00d1ff] bg-[#00d1ff]/15 text-[#00d1ff] font-bold' : 'border-white/5 bg-black/30'}`}
+                            >
+                               {speedValue}s Sweep
+                            </button>
+                         ))}
+                      </div>
+                   </div>
+                   
+                   <div className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/5 px-2 py-1 border border-emerald-500/10 rounded-lg shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>ALARA Compliance Index Status: <strong className="font-extrabold">{acousticPower <= 50 && dopplerGain >= 70 ? 'OPTIMAL SAFE' : 'NORMAL EXPOSURE'}</strong></span>
                    </div>
                 </div>
              </div>
@@ -2353,11 +2939,12 @@ export default function DopplerModule({
             </div>
          </div>
 
-         {/* SECTION 2: WEB DOPPLER SYNTH AUDIO PLAYER */}
+         <AttachedMediaList module="doppler" />
          <div className="p-4 bg-[#14161a] border border-[#2d3139] rounded-xl flex flex-col gap-4 shadow-lg">
             <div className="flex justify-between items-center">
                <div className="flex items-center gap-2">
                   <Volume2 size={13} className="text-[#00d1ff]" />
+
                   <span className="text-[10px] text-[#00d1ff] font-bold uppercase font-mono tracking-widest">Doppler Audio Synth (Whoosh!)</span>
                </div>
                {/* Pulsing visual beat of heart rate synchronized perfectly to BPM */}
@@ -2607,22 +3194,21 @@ export default function DopplerModule({
                               {dopplerMode === 'cw' ? '∞ Continuous' : autoScale ? `${prfKHz.toFixed(1)} kHz (Auto)` : `${prfKHz.toFixed(1)} kHz`}
                            </span>
                         </div>
-                        <input 
-                          type="range"
-                          min="1.0"
-                          max="10.0"
-                          step="0.5"
-                          value={prfKHz}
-                          disabled={dopplerMode === 'cw'}
-                          onChange={(e) => {
-                            setPrfKHz(parseFloat(e.target.value));
-                            setAutoScale(false);
-                          }}
-                          className="w-full h-1 accent-[#00d1ff] bg-[#2d3139] rounded cursor-pointer disabled:cursor-not-allowed"
-                        />
-                        <div className="flex justify-between text-[6.5px] text-white/30">
-                           <span>1.0 kHz (Low-Flow focus)</span>
-                           <span>10.0 kHz (Nyquist Limit)</span>
+                        <div className="py-2 flex justify-center">
+                           <RotaryKnob
+                             label="PRF Scale"
+                             value={prfKHz}
+                             min={1.0}
+                             max={10.0}
+                             step={0.5}
+                             onChange={(val) => {
+                               setPrfKHz(val);
+                               setAutoScale(false);
+                             }}
+                             unit="kHz"
+                             isActive={selectedHelpKnob === 'prf' && dopplerMode !== 'cw'}
+                             onClick={() => { if (dopplerMode !== 'cw') setSelectedHelpKnob('prf'); }}
+                           />
                         </div>
                      </div>
 

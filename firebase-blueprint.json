@@ -80,9 +80,25 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["key", "base64Data", "createdAt"]
+    },
+    "Branding": {
+      "title": "Branding Configuration",
+      "description": "Customized UI media and branding assets including team badge and team poster",
+      "type": "object",
+      "properties": {
+        "teamBadge": { "type": "string", "description": "Base64 or external URL for U.U.U. Spec-Ops Badge" },
+        "teamPoster": { "type": "string", "description": "Base64 or external URL for U.U.U. Covert Poster" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["teamBadge", "teamPoster"]
     }
   },
   "firestore": {
+    "/branding/{configId}": {
+      "schema": "Branding",
+      "description": "Global application branding configurations"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User account documents"
